@@ -21,7 +21,9 @@ endif()
 find_package(OpenMP REQUIRED)
 
 # Source dependencies (optional extension point)
-set(DEPENDENCIES)
+set(DEPENDENCIES
+        include/case.hpp
+        src/case.cpp)
 
 # Main executable
 add_executable(Run main.cpp ${DEPENDENCIES})
@@ -37,7 +39,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_subdirectory(external/googletest)
     enable_testing()
 
-    add_executable(Tests tests/test_main.cpp ${DEPENDENCIES})
+    add_executable(Tests tests/test_main.cpp ${DEPENDENCIES}
+            tests/case_test.cpp)
     target_include_directories(Tests PRIVATE include external/include)
     target_link_libraries(Tests PRIVATE gtest gtest_main OpenMP::OpenMP_CXX)
 
