@@ -26,7 +26,9 @@ set(DEPENDENCIES
         src/case.cpp
         include/command_line.hpp
         src/command_line.cpp
-        include/parameters.hpp)
+        include/parameters.hpp
+        include/preprocessor.hpp
+        src/preprocessor.cpp)
 
 # Main executable
 add_executable(Run main.cpp ${DEPENDENCIES})
