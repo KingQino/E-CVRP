@@ -30,7 +30,8 @@ set(DEPENDENCIES
         include/preprocessor.hpp
         src/preprocessor.cpp
         include/heuristic_interface.hpp
-        include/stats_interface.hpp)
+        include/stats_interface.hpp
+        src/stats_interface.cpp)
 
 # Main executable
 add_executable(Run main.cpp ${DEPENDENCIES})
