@@ -23,7 +23,10 @@ find_package(OpenMP REQUIRED)
 # Source dependencies (optional extension point)
 set(DEPENDENCIES
         include/case.hpp
-        src/case.cpp)
+        src/case.cpp
+        include/command_line.hpp
+        src/command_line.cpp
+        include/parameters.hpp)
 
 # Main executable
 add_executable(Run main.cpp ${DEPENDENCIES})
