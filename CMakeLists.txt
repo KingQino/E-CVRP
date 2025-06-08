@@ -28,7 +28,9 @@ set(DEPENDENCIES
         src/command_line.cpp
         include/parameters.hpp
         include/preprocessor.hpp
-        src/preprocessor.cpp)
+        src/preprocessor.cpp
+        include/heuristic_interface.hpp
+        include/stats_interface.hpp)
 
 # Main executable
 add_executable(Run main.cpp ${DEPENDENCIES})
