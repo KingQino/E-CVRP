@@ -426,39 +426,39 @@
    )
    ```
 
+3. run __valgrind__
+
+   ```sh
+   cmake ..
+   make valgrind_run
+   ```
+
    ```sh
    valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --error-exitcode=1 --log-file=valgrind_run.log ./Run -alg lahc -ins E-n22-k4.evrp -log 1 -stp 1 -exp 1 -mth 0 -his_len 5000 -max_depth 200 -low_thresh 0.3 -low_margin 1.1
    ```
 
-3. run __valgrind__
-
-   ```sh
-   cmake -DCMAKE_BUILD_TYPE=Release ..
-   make valgrind_run
-   ```
-
 4. To analyze actual memory usage (optional)
 
-   ```cmake
-   # 强制开启调试符号
-   set(CMAKE_BUILD_TYPE Debug)
-   set(CMAKE_CXX_FLAGS_DEBUG "-g")
-   ```
-
    ```sh
-   cmake ..
+   cmake -DCMAKE_BUILD_TYPE=Debug ..
    make clean
    make -j
    ```
 
    ```sh
    # valgrind --tool=massif ./your_program
-   valgrind --tool=massif ./Run -alg sga -ins E-n22-k4.evrp -log 1 -stp 1 -mth 0 -neigh_attempts 10000
+   valgrind --tool=massif ./Run -alg lahc -ins E-n22-k4.evrp -log 1 -stp 1 -exp 1 -mth 0 -his_len 5000 -max_depth 200 -low_thresh 1.0 -low_margin 1.1 
    
    # ms_printhuman-readable breakdown of memory usage over time
    ms_print massif.out.xxxx > massif_report.txt
    less massif_report.txt
    ```
+
+   ```sh
+   sshpass -p "Happy19960507" scp exx866@login.hpc.qmul.ac.uk:/data/home/exx866/Valgrind/E-CVRP/build/massif_report.txt /Users/yhq/Desktop/massif_report.txt
+   ```
+
+   
 
    > chatGPT analyze
 

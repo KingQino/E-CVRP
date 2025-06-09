@@ -12,9 +12,11 @@ endif()
 
 message(STATUS "CMake build type: ${CMAKE_BUILD_TYPE}")
 
-# Add optimization flags in Release mode
+# Compiler flags based on build type
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 endif()
 
 # Find OpenMP
