@@ -31,7 +31,9 @@ set(DEPENDENCIES
         src/preprocessor.cpp
         include/heuristic_interface.hpp
         include/stats_interface.hpp
-        src/stats_interface.cpp)
+        src/stats_interface.cpp
+        include/initializer.hpp
+        src/initializer.cpp)
 
 # Main executable
 add_executable(Run main.cpp ${DEPENDENCIES})
