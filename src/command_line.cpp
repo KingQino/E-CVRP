@@ -52,6 +52,7 @@ void CommandLine::parse_parameters(Parameters& params) const {
         params.enable_logging = get_bool("log", params.enable_logging);
         params.stop_criteria = get_int("stp", params.stop_criteria);
         params.enable_multithreading = get_bool("mth", params.enable_multithreading);
+        params.activate_exp_mode = get_bool("exp", params.activate_exp_mode);
         params.seed = get_int("seed", params.seed);
         params.history_length = get_int("his_len", params.history_length);
         params.max_search_depth = get_int("max_depth", params.max_search_depth);
@@ -80,6 +81,7 @@ void CommandLine::display_help() {
               << "  -log [0|1]                   : Enable logging (default: 0)\n"
               << "  -stp [0|1|2]                 : Stopping criteria, 0: max-evals, 1: max-time, 2: obj-converge (default: 0)\n"
               << "  -mth [0|1]                   : Enable multi-threading (default: 1)\n"
+              << "  -exp [0|1]                   : Activate experimental mode (default: 0)\n"
               << "  -seed [int]                  : Random seed (default: 0)\n"
               << "  -his_len [int]               : LAHC history length (default: 5000)\n"
               << "  -max_depth [int]             : LAHC max search depth (default: 25)\n"

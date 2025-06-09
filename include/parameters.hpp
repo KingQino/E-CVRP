@@ -21,6 +21,7 @@ struct Parameters {
     bool enable_logging;        // Enable logging
     int stop_criteria;          // Stopping criteria (e.g., max evaluations used)
     bool enable_multithreading; // Enable multi-threading
+    bool activate_exp_mode;     // Activate experimental mode (default: false)
     int seed;                   // Random seed
 
     // Algorithm parameters
@@ -39,6 +40,7 @@ struct Parameters {
             enable_logging(false),
             stop_criteria(0),
             enable_multithreading(false),
+            activate_exp_mode(false),
             seed(0) {
 
         history_length = 5'000;

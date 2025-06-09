@@ -17,6 +17,7 @@ Preprocessor::Preprocessor(const Case &c, const Parameters &params) : c(c), para
     } else {
         max_exec_time_ = static_cast<int>(3 * (c.problem_size_ / 100.0) * 60 * 60);
     }
+    if (params.activate_exp_mode) max_exec_time_ = 10; // for testing purposes
     this->max_no_improvement_count_ = 800; // adjust further  default: 20,000
 
     this->max_demand_ = *std::max_element(c.demand_.begin(), c.demand_.end());
