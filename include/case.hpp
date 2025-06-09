@@ -19,6 +19,8 @@
 #include <cfloat>
 #include <cstdio>
 #include <numeric>
+#include <filesystem>
+
 
 using namespace std;
 
@@ -27,7 +29,7 @@ class Case {
 public:
     explicit Case(const string& kDataPath, const string& file_name);
     ~Case();
-    void read_problem(const string& file_path);	                                        // reads .evrp file
+    void read_problem(const std::filesystem::path& file_path);                          // reads .evrp file
     static double **generate_2D_matrix_double(int n, int m);                            // generate a 2D matrix of double
     [[nodiscard]] int get_customer_demand_(int customer) const;				            // returns the customer demand
     [[nodiscard]] bool is_charging_station(int node) const;					            // returns true if node is a charging station
@@ -53,7 +55,6 @@ public:
     int dimension_{};                       // dimension of the problem, i.e., not accurate
     int problem_size_{};                    // Total number of customers, charging stations and depot
     int max_vehicle_capa_{};                // maximum capacity of the vehicle
-    double max_service_time_{};             // maximum service time of the driver
     double max_battery_capa_{};             // maximum energy capacity of the vehicle
     double energy_consumption_rate_{};      // energy consumption rate
     double optimum_{};                      // known optimum value of the problem, if available

@@ -5,22 +5,22 @@
 #include "command_line.hpp"
 #include <stdexcept>
 #include <unistd.h>   // realpath
+#include <filesystem>
+#include <iostream>
+#include <cstdlib>
+
+namespace fs = std::filesystem;
 
 CommandLine::CommandLine(const int argc, char* argv[]) {
-    char resolved_path[PATH_MAX];
-    if (realpath(argv[0], resolved_path) == nullptr) {
-        std::cerr << "Error resolving absolute path of executable.\n";
+    try {
+        const fs::path exec_path = fs::canonical(argv[0]);  // get the absolute path of the executable
+        const fs::path project_root = exec_path.parent_path().parent_path();  // assume the project root is two levels up
+
+        arguments["root_path"] = project_root.string();
+    } catch (const fs::filesystem_error& e) {
+        std::cerr << "Error resolving path: " << e.what() << '\n';
         std::exit(1);
     }
-
-    const std::string absolute_path = resolved_path;
-
-    // Go up two directory levels: from /a/b/build/Run -> /a/b
-    const std::size_t last_slash = absolute_path.rfind('/');
-    const std::size_t second_last_slash = absolute_path.rfind('/', last_slash - 1);
-    const std::string project_root = absolute_path.substr(0, second_last_slash);
-
-    arguments["root_path"] = project_root;
 
     for (int i = 1; i < argc; i += 2) {
         if (i + 1 < argc) { // Ensure there's a value after the key
@@ -45,8 +45,8 @@ CommandLine::CommandLine(const int argc, char* argv[]) {
 
 void CommandLine::parse_parameters(Parameters& params) const {
     try {
-        params.k_data_path = get_string("root_path", "..") + "/data/";
-        params.k_stats_path = get_string("root_path", "..") + "/stats/";
+        params.k_data_path = (fs::path(get_string("root_path", "..")) / "data").string();
+        params.k_stats_path = (fs::path(get_string("root_path", "..")) / "stats").string();
         params.algorithm = string_to_algorithm(get_string("alg", "Lahc"));
         params.instance = get_string("ins", params.instance);
         params.enable_logging = get_bool("log", params.enable_logging);
@@ -56,6 +56,7 @@ void CommandLine::parse_parameters(Parameters& params) const {
         params.history_length = get_int("his_len", params.history_length);
         params.max_search_depth = get_int("max_depth", params.max_search_depth);
         params.low_opt_trigger_threshold = get_double("low_thresh", params.low_opt_trigger_threshold);
+        params.low_opt_trigger_margin = get_double("low_margin", params.low_opt_trigger_margin);
         params.T0 = get_double("t0", params.T0);
         params.alpha = get_double("alpha", params.alpha);
         params.max_neigh_attempts = get_int("neigh_attempts", params.max_neigh_attempts);
@@ -65,8 +66,8 @@ void CommandLine::parse_parameters(Parameters& params) const {
         std::exit(1);
     }
 
-    std::cout << "[INFO] Data path: " << params.k_data_path << "\n";
-    std::cout << "[INFO] Stats path: " << params.k_stats_path << "\n";
+    std::cout << "[INFO] Default data path: " << params.k_data_path << "\n";
+    std::cout << "[INFO] Default stats path: " << params.k_stats_path << "\n";
 }
 
 // Display help message
@@ -83,6 +84,7 @@ void CommandLine::display_help() {
               << "  -his_len [int]               : LAHC history length (default: 5000)\n"
               << "  -max_depth [int]             : LAHC max search depth (default: 25)\n"
               << "  -low_thresh [double]         : LAHC threshold for triggering lower optimisation, [0, 1] (default: 0.3)\n"
+              << "  -low_margin [double]         : LAHC margin related to the best upper cost for lower optimisation, >= 1.0 (default: 1.10)\n"
               << "  -rt_mul [int]                : Runtime multiplier (default: 1)\n"
               << "  -nb_granular [int]           : Granular search parameter (default: 20)\n"
               << "  -is_hard_constraint [0|1]    : Whether to use hard constraint (default: 1)\n"

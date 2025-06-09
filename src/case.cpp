@@ -3,15 +3,48 @@
 //
 
 #include "case.hpp"
+#include <filesystem>
+#include <fstream>
+
+namespace fs = std::filesystem;
 
 Case::Case(const string& kDataPath, const string& file_name) {
     this->file_name_ = file_name;
     this->instance_name_ = file_name.substr(0, file_name.find('.'));
 
-    std::string full_path = kDataPath;
-    if (!full_path.empty() && full_path.back() != '/')
-        full_path += '/';
-    full_path += file_name;
+    fs::path full_path = file_name;
+
+    if (!full_path.has_parent_path()) {
+        // file_name is a pure file -> find it in kDataPath and its subdirectories
+        auto data_root = fs::path(kDataPath);
+        if (!fs::exists(data_root)) {
+            throw std::runtime_error("Data path does not exist: " + data_root.string());
+        }
+
+        // try to find the file in the data_root directory and its subdirectories
+        bool found = false;
+        for (const auto& entry : fs::directory_iterator(data_root)) {
+            if (fs::is_regular_file(entry) && entry.path().filename() == file_name) {
+                full_path = entry.path();
+                found = true;
+                break;
+            }
+            if (fs::is_directory(entry)) {
+                for (const auto& sub_entry : fs::directory_iterator(entry)) {
+                    if (fs::is_regular_file(sub_entry) && sub_entry.path().filename() == file_name) {
+                        full_path = sub_entry.path();
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (found) break;
+        }
+
+        if (!found) {
+            throw std::runtime_error("File not found in " + data_root.string() + " or its subdirectories: " + file_name);
+        }
+    }
 
     this->read_problem(full_path);
 }
@@ -24,7 +57,7 @@ Case::~Case() {
     delete[] this->distances_;
 }
 
-void Case::read_problem(const std::string &file_path) {
+void Case::read_problem(const std::filesystem::path& file_path) {
     this->num_depot_ = 1;
 
     std::ifstream infile(file_path);
@@ -115,7 +148,6 @@ void Case::read_problem(const std::string &file_path) {
     infile.close();
 
     // === 5. initialise distance matrix  ===
-    this->max_service_time_ = std::numeric_limits<double>::max();
     this->distances_ = generate_2D_matrix_double(problem_size_, problem_size_);
     for (int i = 0; i < problem_size_; ++i) {
         for (int j = 0; j < problem_size_; ++j) {

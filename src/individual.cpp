@@ -193,6 +193,21 @@ vector<int> Individual::get_chromosome() const {
     return chromosome;
 }
 
+void swap(Individual& a, Individual& b) noexcept {
+    using std::swap;
+    swap(a.instance, b.instance);
+    swap(a.preprocessor, b.preprocessor);
+    swap(a.route_cap, b.route_cap);
+    swap(a.node_cap, b.node_cap);
+    swap(a.routes, b.routes);
+    swap(a.num_routes, b.num_routes);
+    swap(a.num_nodes_per_route, b.num_nodes_per_route);
+    swap(a.demand_sum_per_route, b.demand_sum_per_route);
+    swap(a.upper_cost, b.upper_cost);
+    swap(a.lower_cost, b.lower_cost);
+    swap(a.biased_fitness, b.biased_fitness);
+}
+
 std::ostream& operator<<(std::ostream& os, const Individual& individual) {
     os << "Individual Details:\n";
     os << "Route Capacity: " << individual.route_cap << "\n";
@@ -224,19 +239,4 @@ std::ostream& operator<<(std::ostream& os, const Individual& individual) {
     }
 
     return os;
-}
-
-void swap(Individual& a, Individual& b) noexcept {
-    using std::swap;
-    swap(a.instance, b.instance);
-    swap(a.preprocessor, b.preprocessor);
-    swap(a.route_cap, b.route_cap);
-    swap(a.node_cap, b.node_cap);
-    swap(a.routes, b.routes);
-    swap(a.num_routes, b.num_routes);
-    swap(a.num_nodes_per_route, b.num_nodes_per_route);
-    swap(a.demand_sum_per_route, b.demand_sum_per_route);
-    swap(a.upper_cost, b.upper_cost);
-    swap(a.lower_cost, b.lower_cost);
-    swap(a.biased_fitness, b.biased_fitness);
 }

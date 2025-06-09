@@ -30,6 +30,9 @@ Preprocessor::Preprocessor(const Case &c, const Parameters &params) : c(c), para
         }
     }
 
+    for (int i = 1; i < c.num_depot_ + c.num_customer_; ++i) {
+        customer_ids_.push_back(i);
+    }
     for (int i = c.num_depot_ + c.num_customer_; i < c.problem_size_; ++i) {
         station_ids_.push_back(i);
     }

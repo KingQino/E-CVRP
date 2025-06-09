@@ -35,7 +35,13 @@ set(DEPENDENCIES
         include/initializer.hpp
         src/initializer.cpp
         include/individual.hpp
-        src/individual.cpp)
+        src/individual.cpp
+        include/lahc.hpp
+        src/lahc.cpp
+        include/follower.hpp
+        src/follower.cpp
+        include/leader_lahc.hpp
+        src/leader_lahc.cpp)
 
 # Main executable
 add_executable(Run main.cpp ${DEPENDENCIES})

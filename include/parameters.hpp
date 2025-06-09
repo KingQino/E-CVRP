@@ -26,7 +26,8 @@ struct Parameters {
     // Algorithm parameters
     int history_length;                 // LAHC: history length
     int max_search_depth;               // LAHC: max_search_depth determines how many times the neighbourhood (random) will be explored
-    double low_opt_trigger_threshold;   // LAHC: The threshold to trigger the lower-level optimisation
+    double low_opt_trigger_threshold;   // LAHC: The threshold to trigger the lower-level optimisation, in [0.0, 1.0]
+    double low_opt_trigger_margin;      // LAHC: The margin to trigger the lower-level optimisation, >= 1.0
     double T0;                          // CBMA: Initial temperature for simulated annealing (if applicable)
     double alpha;                       // CBMA: Cooling rate for simulated annealing (if applicable)
     int max_neigh_attempts;             // CBMA: Maximum attempts for neighbourhood exploration
@@ -42,7 +43,8 @@ struct Parameters {
 
         history_length = 5'000;
         max_search_depth = 200;
-        low_opt_trigger_threshold = 0.3;
+        low_opt_trigger_threshold = 0.3; // Threshold for the recent success rate to trigger lower-level optimization. Range: [0.0, 1.0]
+        low_opt_trigger_margin = 1.10;   // Relative cost margin (≥ 1.0) within which the candidate solution must fall to trigger lower-level optimization
         T0 = 30.0;
         alpha = 0.98;
         max_neigh_attempts = 10'000;
