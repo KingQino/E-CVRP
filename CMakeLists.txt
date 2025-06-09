@@ -33,7 +33,9 @@ set(DEPENDENCIES
         include/stats_interface.hpp
         src/stats_interface.cpp
         include/initializer.hpp
-        src/initializer.cpp)
+        src/initializer.cpp
+        include/individual.hpp
+        src/individual.cpp)
 
 # Main executable
 add_executable(Run main.cpp ${DEPENDENCIES})

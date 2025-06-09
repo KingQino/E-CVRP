@@ -22,7 +22,7 @@ Preprocessor::Preprocessor(const Case &c, const Parameters &params) : c(c), para
     this->max_demand_ = *std::max_element(c.demand_.begin(), c.demand_.end());
     this->total_demand_ = std::accumulate(c.demand_.begin(), c.demand_.end(), 0);
     this->route_cap_ =  10 * c.num_vehicle_;
-    this->node_cap_ = c.num_customer_ + 2; // for the boarder condition, for example E-n23-k3, a route almost contains all the customers
+    this->node_cap_ = c.num_customer_ * 2; // for the boarder condition, for example E-n23-k3, a route almost contains all the customers
     this->max_cruise_distance_ = c.max_battery_capa_ / c.energy_consumption_rate_;
     for (int i = 0; i < c.problem_size_; i++) {
         for (int j = 0; j < c.problem_size_; j++) {
