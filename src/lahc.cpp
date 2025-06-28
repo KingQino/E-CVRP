@@ -45,11 +45,12 @@ void Lahc::initialize_heuristic() {
     this->iter = 0L;
     this->idle_iter = 0L;
     this->ratio_successful_moves = 1.0; // the largest decimal value
-    this->num_successful_moves_per_history = 0.;
+    this->num_successful_moves_per_history = static_cast<double>(history_length);
 }
 
 void Lahc::run_heuristic() {
     leader->load_individual(current);
+    bool within_budget;
 
     do {
 
@@ -61,10 +62,9 @@ void Lahc::run_heuristic() {
         if (v == 0L) {
             history_list_metrics = calculate_statistical_indicators(history_list);
 
-            if (iter != 0L) {
-                ratio_successful_moves = num_successful_moves_per_history / static_cast<double>(history_length);
-            }
+            ratio_successful_moves = num_successful_moves_per_history / static_cast<double>(history_length);
 
+            duration = std::chrono::high_resolution_clock::now() - start;
             flush_row_into_evol_log();
             num_successful_moves_per_history = 0.;
         }
@@ -95,7 +95,8 @@ void Lahc::run_heuristic() {
             }
         }
 
-    } while ((iter < 100'000L || idle_iter < iter / 5) && ratio_successful_moves > 0.001 && duration.count() < preprocessor->max_exec_time_);
+        within_budget = stop_criteria == 0 ? !stop_criteria_max_evals() : !stop_criteria_max_exec_time(duration);
+    } while ((iter < 100'000L || idle_iter < iter / 5) && ratio_successful_moves > 0.001 && within_budget);
 }
 
 void Lahc::run() {
@@ -145,7 +146,7 @@ void Lahc::open_log_for_evolution() {
 
     const string file_name = "evols." + instance->instance_name_ + ".csv";
     log_evolution.open(directory / file_name);
-    log_evolution << "iters,global_best,min,max,mean,std,ratio_moves\n";
+    log_evolution << "iters,global_best,min,max,mean,std,ratio_moves,evals,time\n";
 }
 
 void Lahc::close_log_for_evolution() {
@@ -172,7 +173,10 @@ void Lahc::flush_row_into_evol_log() {
                  << history_list_metrics.max << ","
                  << history_list_metrics.avg << ","
                  << history_list_metrics.std << ","
-                 << (iter == 0L? 0.0 : ratio_successful_moves)
+                 << ratio_successful_moves << ","
+                 << std::fixed << std::setprecision(2)
+                 << instance->get_evals() << ","
+                 << duration.count()
                  << "\n";
 }
 
