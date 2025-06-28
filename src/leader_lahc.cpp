@@ -11,7 +11,7 @@ LeaderLahc::LeaderLahc(std::mt19937& engine, Case *instance, Preprocessor *prepr
       random_engine(engine){
 
     this->move_type_selector = uniform_int_distribution<int>(0, 7);
-    this->max_search_depth = preprocessor->params.max_search_depth;
+    this->max_attempts = preprocessor->params.max_attempts;
     this->route_cap = preprocessor->route_cap_;
     this->node_cap  = preprocessor->node_cap_;
     this->num_routes = 0;
@@ -153,7 +153,7 @@ bool LeaderLahc::two_opt_intra_for_individual() {
     bool is_moved = false;
     int search_depth = 0;
 
-    while (!is_moved && search_depth < max_search_depth) {
+    while (!is_moved && search_depth < max_attempts) {
         std::uniform_int_distribution<int> dist(0, num_routes - 1);
         const int random_route_idx = dist(random_engine);
 
@@ -209,7 +209,7 @@ bool LeaderLahc::node_relocation_intra_for_individual() {
     bool is_moved = false;
     int search_depth = 0;
 
-    while (!is_moved && search_depth < max_search_depth) {
+    while (!is_moved && search_depth < max_attempts) {
         std::uniform_int_distribution<int> dist(0, num_routes - 1);
         const int random_route_idx = dist(random_engine);
 
@@ -289,7 +289,7 @@ bool LeaderLahc::node_relocation_inter_for_individual() {
     bool is_moved = false;
     int search_depth = 0;
 
-    while (!is_moved && search_depth < max_search_depth) {
+    while (!is_moved && search_depth < max_attempts) {
         std::uniform_int_distribution<int> dist(0, num_routes - 1);
         const int r1 = dist(random_engine);
         bool is_diff_route = false;
@@ -349,7 +349,7 @@ bool LeaderLahc::node_exchange_intra_for_individual() {
     bool is_moved = false;
     int search_depth = 0;
 
-    while (!is_moved && search_depth < max_search_depth) {
+    while (!is_moved && search_depth < max_attempts) {
         std::uniform_int_distribution<int> dist(0, num_routes - 1);
         const int random_route_idx = dist(random_engine);
 
@@ -405,7 +405,7 @@ bool LeaderLahc::node_exchange_inter_for_individual() {
     bool is_moved = false;
     int search_depth = 0;
 
-    while (!is_moved && search_depth < max_search_depth) {
+    while (!is_moved && search_depth < max_attempts) {
         std::uniform_int_distribution<int> dist(0, num_routes - 1);
         const int r1 = dist(random_engine);
         bool is_diff_route = false;
@@ -468,7 +468,7 @@ bool LeaderLahc::perform_intra_move(const std::function<bool(int *, int)>& move_
     bool is_moved = false;
     int search_depth = 0;
 
-    while (!is_moved && search_depth < max_search_depth) {
+    while (!is_moved && search_depth < max_attempts) {
         std::uniform_int_distribution<int> dist(0, num_routes - 1);
         const int random_route_idx = dist(random_engine);
 
@@ -486,7 +486,7 @@ bool LeaderLahc::perform_inter_move(const std::function<bool(int *, int *, int &
     int search_depth = 0;
 
     int r2;
-    while (!is_moved && search_depth < max_search_depth) {
+    while (!is_moved && search_depth < max_attempts) {
         // randomly generate two different route indices
         std::uniform_int_distribution<int> dist(0, num_routes - 1);
         const int r1 = dist(random_engine);
@@ -512,7 +512,7 @@ bool LeaderLahc::perform_inter_move_with_empty_route(const std::function<bool(in
     bool is_moved = false;
     int search_depth = 0;
 
-    while (!is_moved && search_depth < max_search_depth) {
+    while (!is_moved && search_depth < max_attempts) {
         std::uniform_int_distribution<int> dist(0, num_routes - 1);
         const int r1 = dist(random_engine);
         const int r2 = num_routes; // empty route

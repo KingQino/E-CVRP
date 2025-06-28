@@ -56,7 +56,7 @@ void CommandLine::parse_parameters(Parameters& params) const {
         params.activate_exp_mode = get_bool("exp", params.activate_exp_mode);
         params.seed = get_int("seed", params.seed);
         params.history_length = get_int("his_len", params.history_length);
-        params.max_search_depth = get_int("max_depth", params.max_search_depth);
+        params.max_attempts = get_int("max_attempts", params.max_attempts);
         params.low_opt_trigger_threshold = get_double("low_thresh", params.low_opt_trigger_threshold);
         params.low_opt_trigger_margin = get_double("low_margin", params.low_opt_trigger_margin);
         params.T0 = get_double("t0", params.T0);
@@ -85,7 +85,7 @@ void CommandLine::display_help() {
               << "  -exp [0|1]                   : Activate experimental mode (default: 0)\n"
               << "  -seed [int]                  : Random seed (default: 0)\n"
               << "  -his_len [int]               : LAHC history length (default: 5000)\n"
-              << "  -max_depth [int]             : LAHC max search depth (default: 25)\n"
+              << "  -max_attempts [int]          : LAHC max attempts (default: 25)\n"
               << "  -low_thresh [double]         : LAHC threshold for triggering lower optimisation, [0, 1] (default: 0.3)\n"
               << "  -low_margin [double]         : LAHC margin related to the best upper cost for lower optimisation, >= 1.0 (default: 1.10)\n"
               << "  -rt_mul [int]                : Runtime multiplier (default: 1)\n"

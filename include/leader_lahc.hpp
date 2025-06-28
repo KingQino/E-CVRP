@@ -29,7 +29,7 @@ public:
     int num_routes;
     int* num_nodes_per_route;
     int* demand_sum_per_route;
-    int max_search_depth;
+    int max_attempts;
     double upper_cost;
     double history_cost;
 

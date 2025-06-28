@@ -591,8 +591,8 @@ Irace: parameter tunning - Sulis
    ```sh
    # 1:            2:                   3:     4:      5:
    his_len         "-his_len "          i      (5000, 500000)
-   max_depth       "-max_depth "        i      (20, 600)
-   low_margin 			"-low_margin "			 r			(1.10, 1.80)
+   max_attempts    "-max_attempts "     i      (20, 600)
+   low_margin 			"-low_margin "			 r			(1.05, 1.80)
    low_thresh      "-low_thresh "       r      (0.20, 0.80)
    
    [forbidden]
@@ -605,7 +605,7 @@ Irace: parameter tunning - Sulis
    `configurations.txt`
 
    ```sh
-   his_len max_depth       low_thresh
+   his_len max_attempts   low_thresh
    45837   481     0.44
    47853   286     0.70
    54030   475     0.47
