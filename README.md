@@ -577,6 +577,12 @@ Irace: parameter tunning - Sulis
 1. Env
 
    ```sh
+   # Apocrita
+   module load spack/0.23.1 R/4.4.1 openssl/3.3.0-gcc-12.2.0 cmake/3.27.9-gcc-12.2.0
+   ```
+
+   ```sh
+   # Sulis
    module load GCCcore/13.2.0 CMake GCC/13.2.0 OpenMPI/4.1.6 R/4.3.3
    ```
 
@@ -590,7 +596,7 @@ Irace: parameter tunning - Sulis
 
    ```sh
    # 1:            2:                   3:     4:      5:
-   his_len         "-his_len "          i      (5000, 500000)
+   his_len         "-his_len "          i      (5000, 100000)
    max_attempts    "-max_attempts "     i      (20, 600)
    low_margin 			"-low_margin "			 r			(1.05, 1.80)
    low_thresh      "-low_thresh "       r      (0.20, 0.80)
@@ -673,7 +679,7 @@ Irace: parameter tunning - Sulis
    $EXE ${EXE_PARAMS} 1> ${STDOUT} 2> ${STDERR}
    
    END=$(date +%s.%N)
-   TIME=$(echo "$END - $START" | bc)
+   TIME=$(awk "BEGIN {print $END - $START}")
    
    
    if [ ! -s "${STDOUT}" ]; then
@@ -689,7 +695,86 @@ Irace: parameter tunning - Sulis
    exit 0
    ```
 
+3. Submit
+
+   `setup.sh`
+
+   ```sh
+   #!/bin/bash
+   #$ -pe smp 10
+   #$ -l rocky
+   #$ -l h_vmem=2G
+   #$ -l h_rt=1:0:0
+   #$ -cwd
+   #$ -j y
+   #$ -N test
+   #$ -o /data/home/exx866/R/test/irace.log
    
+   module load spack/0.23.1 R/4.4.1 openssl/3.3.0-gcc-12.2.0 cmake/3.27.9-gcc-12.2.0
+   
+   export OMP_NUM_THREADS=10
+   export IRACE_HOME="/data/home/exx866/R/x86_64-pc-linux-gnu-library/4.4/irace"
+   export PATH="$IRACE_HOME/bin:$PATH"
+   
+   Rscript run_irace.R
+   ```
 
-3. 
+   `setup.slurm`
 
+   ```sh
+   #!/bin/bash
+   
+   # Slurm job options (job-name, compute nodes, job time)
+   #SBATCH --job-name=irace_lahc                             # Job name set to the parent directory name
+   #SBATCH --output=/home/e/exx866/R/irace-project-3/irace.log       # Output log file path in the log folder
+   #SBATCH --time=48:0:0                                  # Request 48 hours of compute time
+   #SBATCH --nodes=1                                      # Request 1 node
+   #SBATCH --tasks-per-node=12                             # One task per node
+   #SBATCH --cpus-per-task=10                             # Each task uses 10 CPUs (threads)
+   #SBATCH --mem-per-cpu=2G                               # Memory per CPU
+   #SBATCH --account=su008-exx866
+   
+   # Load necessary modules
+   module load GCCcore/13.2.0 CMake GCC/13.2.0 OpenMPI/4.1.6 R/4.3.3
+   
+   export OMP_NUM_THREADS=10
+   export IRACE_HOME="/home/e/exx866/R/x86_64-pc-linux-gnu-library/4.3/irace"
+   export PATH="$IRACE_HOME/bin:$PATH"
+   
+   Rscript run_irace.R
+   ```
+
+
+4. Parameter tuning process
+
+   - We have 4 parameters to adjust
+
+     ```sh
+     # 1:            2:                   3:     4:      5:
+     his_len         "-his_len "          i      (5000, 100000)
+     max_attempts    "-max_attempts "     i      (20, 600)
+     low_margin 			"-low_margin "			 r			(1.05, 1.80)
+     low_thresh      "-low_thresh "       r      (0.20, 0.80)
+     ```
+
+   - First run - preliminary adjustments for 2 parameters
+
+     ```sh
+     his_len         "-his_len "          i      (5000, 100000)
+     max_attempts    "-max_attempts "     i      (20, 600)
+     
+     EXE_PARAMS="-alg lahc -ins $INSTANCE -log 0 -stp 0 -mth 0 -low_thresh 1.01 -low_margin 10.0 -seed ${SEED} ${CONFIG_PARAMS}"
+     
+     parallel = 40
+     maxExperiments = 2000
+     firstTest = 17
+     eachTest  = 17
+     ```
+
+     
+
+   - Second run
+
+     
+
+   
