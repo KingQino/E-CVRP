@@ -79,12 +79,12 @@ bool LeaderLahc::random_walk(const double& history_val) {
             has_moved = node_exchange_inter_for_individual();
             break;
         case 6:
-            perform_inter_move([this](int* route1, int* route2, int& length1, int& length2, int& loading1,
+            has_moved = perform_inter_move([this](int* route1, int* route2, int& length1, int& length2, int& loading1,
                 int& loading2)
                 {return move9_inter(route1, route2, length1, length2, loading1, loading2);});
             break;
         case 7:
-            perform_inter_move_with_empty_route([this](int* route1, int* route2, int& length1, int& length2,
+            has_moved = perform_inter_move_with_empty_route([this](int* route1, int* route2, int& length1, int& length2,
                 int& loading1, int& loading2)
                 {return move1_inter_with_empty_route(route1, route2, length1, length2, loading1, loading2);});
             break;

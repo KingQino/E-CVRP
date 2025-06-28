@@ -21,7 +21,7 @@ public:
     Case* instance;
     Preprocessor* preprocessor;
     std::mt19937& random_engine;
-    uniform_int_distribution<int> move_type_selector;
+    uniform_int_distribution<> move_type_selector;
 
     int route_cap;
     int node_cap;

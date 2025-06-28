@@ -12,6 +12,7 @@
   1. [Architecture](#Architecture)
   2. [Usage](#Usage)
   3. [Debug](#Debug)
+  4. [Parameter-Tuning](#Parameter-Tuning)
 
 
 
@@ -408,6 +409,7 @@
 
    ```sh
    qlogin -pe smp 10 -l h_vmem=16G -l h_rt=1:0:0 -l rocky 
+   qlogin -pe smp 1  -l h_vmem=10G -l h_rt=1:0:0 -l rocky 
    ```
 
    ```sh
@@ -447,9 +449,10 @@
 
    ```sh
    # valgrind --tool=massif ./your_program
-   valgrind --tool=massif ./Run -alg lahc -ins E-n22-k4.evrp -log 1 -stp 1 -exp 1 -mth 0 -his_len 5000 -max_depth 200 -low_thresh 1.0 -low_margin 1.1 
+   valgrind --tool=massif ./Run -alg lahc -ins E-n22-k4.evrp -log 1 -stp 0 -exp 1 -mth 0 -his_len 5000 -max_depth 200 -low_thresh 1.0 -low_margin 1.1 
    
    # ms_printhuman-readable breakdown of memory usage over time
+   # ms_print massif.out.* > massif_report.txt
    ms_print massif.out.xxxx > massif_report.txt
    less massif_report.txt
    ```
@@ -457,8 +460,6 @@
    ```sh
    sshpass -p "Happy19960507" scp exx866@login.hpc.qmul.ac.uk:/data/home/exx866/Valgrind/E-CVRP/build/massif_report.txt /Users/yhq/Desktop/massif_report.txt
    ```
-
-   
 
    > chatGPT analyze
 
@@ -568,4 +569,127 @@ Bug-fix log:
 > - ==> route_cap = 10 * num_vehicles
 >
 > - Need to set up a route_cap of sufficient size, i.e., assume enough vehicles to support optimise
+
+## Parameter-Tuning
+
+Irace: parameter tunning - Sulis
+
+1. Env
+
+   ```sh
+   module load GCCcore/13.2.0 CMake GCC/13.2.0 OpenMPI/4.1.6 R/4.3.3
+   ```
+
+   ```c++
+       if (params.activate_exp_mode) max_exec_time_ = 600; // for testing purposes
+   ```
+
+2. Setting
+
+   `parameters.txt`
+
+   ```sh
+   # 1:            2:                   3:     4:      5:
+   his_len         "-his_len "          i      (5000, 500000)
+   max_depth       "-max_depth "        i      (20, 600)
+   low_margin 			"-low_margin "			 r			(1.10, 1.80)
+   low_thresh      "-low_thresh "       r      (0.20, 0.80)
+   
+   [forbidden]
+   #mode == "x1" & mutation == "low"
+   
+   [global]
+   digits = 2 # Maximum number of decimal places that are significant for numerical (real) parameters.
+   ```
+
+   `configurations.txt`
+
+   ```sh
+   his_len max_depth       low_thresh
+   45837   481     0.44
+   47853   286     0.70
+   54030   475     0.47
+   ```
+
+   `scenario.txt` -- single thread for each task, for further fine-tuning, we can enable multithreading and use fewer parallel evaluatoions below.
+
+   ```sh
+   parameterFile = "parameters.txt"
+   trainInstancesFile = "instances.txt"
+   targetRunner = "./target-runner"
+   logFile = "irace.Rdata"
+   execDir = "./"
+   parallel = 120
+   maxExperiments = 1500
+   firstTest = 10
+   eachTest  = 10
+   blockSize = 1
+   configurationsFile = "configurations.txt"
+   ```
+
+   `run_irace.R `
+
+   ```sh
+   library(irace)
+   message("Starting irace from elite configurations...")
+   irace.cmdline("--scenario scenario.txt")
+   
+   if (file.exists("irace.Rdata")) {
+     load("irace.Rdata")
+     best <- iraceResults$allConfigurations[tail(iraceResults$iterationElites, 1)[[1]][1], ]
+     write.table(best, file = "best-config.txt", sep = "\t", quote = FALSE, row.names = FALSE)
+   }
+   ```
+
+   `target-runner`  : `chmod +x`
+
+   ```sh
+   error() {
+       echo "`TZ=UTC date`: $0: error: $@"
+       exit 1
+   }
+   
+   # This parses the arguments given by irace. Do not touch it!
+   CONFIG_ID=$1
+   INSTANCE_ID=$2
+   SEED=$3
+   INSTANCE=$4
+   shift 4 || error "Not enough parameters"
+   CONFIG_PARAMS=$*
+   # End of parsing
+   
+   EXE=/home/e/exx866/R/g13_irace/build/Run
+   EXE_PARAMS="-alg lahc -ins $INSTANCE -log 0 -stp 1 -exp 1 -mth 0 -low_thresh 1.01 -seed ${SEED} ${CONFIG_PARAMS}"
+   
+   if [ ! -x "$(command -v ${EXE})" ]; then
+       error "${EXE}: not found or not executable (pwd: $(pwd))"
+   fi
+   
+   STDOUT=c${CONFIG_ID}-${INSTANCE_ID}-${SEED}.stdout
+   STDERR=c${CONFIG_ID}-${INSTANCE_ID}-${SEED}.stderr
+   
+   START=$(date +%s.%N)
+   
+   $EXE ${EXE_PARAMS} 1> ${STDOUT} 2> ${STDERR}
+   
+   END=$(date +%s.%N)
+   TIME=$(echo "$END - $START" | bc)
+   
+   
+   if [ ! -s "${STDOUT}" ]; then
+       error "${STDOUT}: No such file or directory"
+   fi
+   # This is an example of reading a number from the output.  It assumes that the
+   # objective value is the first number in the first column of the last line of
+   # the output.
+   COST=$(tail -n 1 ${STDOUT} | grep -e '^[[:space:]]*[+-]\?[0-9]' | cut -f1)
+   echo "$COST $TIME"
+   # Comment the following line if you wish to preserve temporary files
+   rm -f "${STDOUT}" "${STDERR}"
+   exit 0
+   ```
+
+   
+
+3. 
 
