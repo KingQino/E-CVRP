@@ -83,9 +83,9 @@ int main(int argc, char* argv[]) {
         Indicators indicators = StatsInterface::calculate_statistical_indicators(perf_of_trials);
         if (indicators.min < 1e-6) {
             std::cout << std::fixed << std::setprecision(2) << 99999999.99 << std::endl;  // If the minimum value is less than 1e6, print a large number
-            return 0;
+        } else {
+            std::cout << std::fixed << std::setprecision(2) << indicators.avg << std::endl;
         }
-        std::cout << std::fixed << std::setprecision(2) << indicators.avg << std::endl;
     }
 
     return 0;
