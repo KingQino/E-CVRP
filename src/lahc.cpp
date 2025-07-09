@@ -50,7 +50,7 @@ void Lahc::initialize_heuristic() {
 
 void Lahc::run_heuristic() {
     leader->load_individual(current);
-    bool within_budget;
+    // bool within_budget;
 
     do {
 
@@ -64,7 +64,6 @@ void Lahc::run_heuristic() {
 
             ratio_successful_moves = num_successful_moves_per_history / static_cast<double>(history_length);
 
-            duration = std::chrono::high_resolution_clock::now() - start;
             flush_row_into_evol_log();
             num_successful_moves_per_history = 0.;
         }
@@ -95,8 +94,10 @@ void Lahc::run_heuristic() {
             }
         }
 
-        within_budget = stop_criteria == 0 ? !stop_criteria_max_evals() : !stop_criteria_max_exec_time(duration);
-    } while ((iter < 100'000L || idle_iter < iter / 5) && ratio_successful_moves > 0.001 && within_budget);
+        // within_budget = stop_criteria == 0 ? !stop_criteria_max_evals() : !stop_criteria_max_exec_time(duration);
+    } while ((iter < 100'000L || idle_iter < iter / 5) && ratio_successful_moves > 0.001 && duration.count() < preprocessor->max_exec_time_);
+    // } while ((iter < 100'000L || idle_iter < iter / 5) && ratio_successful_moves > 0.001 && within_budget);
+
 }
 
 void Lahc::run() {
@@ -128,6 +129,8 @@ void Lahc::run() {
             std::cerr << "Invalid stop criteria option!" << std::endl;
             break;
     }
+
+    follower->run(global_best.get());
 
     if (enable_logging) {
         flush_row_into_evol_log();

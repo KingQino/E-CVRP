@@ -215,8 +215,7 @@ double Follower::insert_station_by_simple_enum(int* repaired_route, int& repaire
     // Compute accumulated distance
     temp_accumulated_distance[0] = 0.0;
     for (int i = 1; i < length; ++i) {
-        temp_accumulated_distance[i] = temp_accumulated_distance[i - 1] +
-                                       instance->get_distance(temp_route[i], temp_route[i - 1]);
+        temp_accumulated_distance[i] = temp_accumulated_distance[i - 1] + instance->distances_[temp_route[i]][temp_route[i - 1]];
     }
 
     const double total_distance = temp_accumulated_distance[length - 1];
@@ -286,7 +285,7 @@ double Follower::insert_station_by_remove_enum(int* repaired_route, int& repaire
     for (int i = 0; i < length - 1; ++i) {
         double allowed_dis = preprocessor->max_cruise_distance_;
         if (!temp_station_inserted.empty()) {
-            allowed_dis -= instance->get_distance(temp_station_inserted.back().station_id, temp_route[i]);
+            allowed_dis -= instance->distances_[temp_station_inserted.back().station_id][temp_route[i]];
         }
 
         const int station = preprocessor->get_best_and_feasible_station(temp_route[i], temp_route[i + 1], allowed_dis);
@@ -305,17 +304,17 @@ double Follower::insert_station_by_remove_enum(int* repaired_route, int& repaire
             const int begin_idx = k == 0 ? 0 : temp_station_inserted[k - 1].pos + 1;
             const int end_idx   = k + 1 < temp_station_inserted.size() ? temp_station_inserted[k + 1].pos : length - 1;
 
-            double segment_dis = instance->get_distance(from_node, temp_route[begin_idx]);
+            double segment_dis = instance->distances_[from_node][temp_route[begin_idx]];
             for (int i = begin_idx; i < end_idx; ++i) {
-                segment_dis += instance->get_distance(temp_route[i], temp_route[i + 1]);
+                segment_dis += instance->distances_[temp_route[i]][temp_route[i + 1]];
             }
-            segment_dis += instance->get_distance(temp_route[end_idx], to_node);
+            segment_dis += instance->distances_[temp_route[end_idx]][to_node];
 
             if (segment_dis <= preprocessor->max_cruise_distance_) {
                 const int pos = temp_station_inserted[k].pos;
                 const int station = temp_station_inserted[k].station_id;
-                const double with_station = instance->get_distance(temp_route[pos], station) + instance->get_distance(station, temp_route[pos + 1]);
-                const double direct = instance->get_distance(temp_route[pos], temp_route[pos + 1]);
+                const double with_station = instance->distances_[temp_route[pos]][station] + instance->distances_[station][temp_route[pos + 1]];
+                const double direct = instance->distances_[temp_route[pos]][temp_route[pos + 1]];
 
                 if (const double saved = with_station - direct; saved > max_saved) {
                     max_saved = saved;
@@ -340,8 +339,8 @@ double Follower::insert_station_by_remove_enum(int* repaired_route, int& repaire
         repaired_route[current_idx++] = station_id;
         last_pos = pos + 1;
 
-        total_cost -= instance->get_distance(temp_route[pos], temp_route[pos + 1]);
-        total_cost += instance->get_distance(temp_route[pos], station_id) + instance->get_distance(station_id, temp_route[pos + 1]);
+        total_cost -= instance->distances_[temp_route[pos]][temp_route[pos + 1]];
+        total_cost += instance->distances_[temp_route[pos]][station_id] + instance->distances_[station_id][temp_route[pos + 1]];
     }
 
     const int remain_len = length - last_pos;
@@ -350,7 +349,7 @@ double Follower::insert_station_by_remove_enum(int* repaired_route, int& repaire
 
     // Add base route cost (only once)
     for (int i = 0; i < length - 1; ++i) {
-        total_cost += instance->get_distance(temp_route[i], temp_route[i + 1]);
+        total_cost += instance->distances_[temp_route[i]][temp_route[i + 1]];
     }
 
     return total_cost;
@@ -429,9 +428,9 @@ void Follower::recursive_charging_placement(const int m_len, const int n_len, in
                 const int second_node = route[chosen_pos[j] + 1];
                 const int station = preprocessor->best_station_[first_node][second_node];
 
-                dis_sum -= instance->get_distance(first_node, second_node);
-                dis_sum += instance->get_distance(first_node, station);
-                dis_sum += instance->get_distance(station, second_node);
+                dis_sum -= instance->distances_[first_node][second_node];
+                dis_sum += instance->distances_[first_node][station];
+                dis_sum += instance->distances_[station][second_node];
             }
             if (dis_sum < final_cost) {
                 final_cost = dis_sum;
@@ -450,14 +449,15 @@ void Follower::recursive_charging_placement(const int m_len, const int n_len, in
             const int station = preprocessor->best_station_[first_node][second_node];
 
             if (cur_upper_bound == s.n_len) {
-                const double one_dis = instance->get_distance(first_node, station);
+                const double one_dis = instance->distances_[first_node][station];
                 if (accumulated_distance[s.i] + one_dis > preprocessor->max_cruise_distance_) {
                     should_pop = true;
                 }
             } else {
                 const int last_pos = chosen_pos[cur_upper_bound - s.n_len - 1];
-                const double one_dis = instance->get_distance(route[last_pos + 1], preprocessor->best_station_[route[last_pos]][route[last_pos + 1]]);
-                const double two_dis = instance->get_distance(first_node, station);
+                const double one_dis = instance->distances_[route[last_pos + 1]][preprocessor->best_station_[route[last_pos]][route[last_pos + 1]]];
+                const double two_dis = instance->distances_[first_node][station];
+
                 const double dist = accumulated_distance[s.i] - accumulated_distance[last_pos + 1];
                 if (dist + one_dis + two_dis > preprocessor->max_cruise_distance_) {
                     should_pop = true;
@@ -466,7 +466,7 @@ void Follower::recursive_charging_placement(const int m_len, const int n_len, in
 
             if (!should_pop && s.n_len == 1) {
                 const double one_dis = accumulated_distance[length - 1] - accumulated_distance[s.i + 1]
-                                 + instance->get_distance(station, route[s.i + 1]);
+                                 + instance->distances_[station][route[s.i + 1]];
                 if (one_dis > preprocessor->max_cruise_distance_) {
                     s.i++;
                     continue;
@@ -492,7 +492,7 @@ double Follower::insert_station_by_all_enumeration(int* repaired_route, int& rep
 
     vector<double> accumulated_distance(length, 0);
     for (int i = 1; i < length; i++) {
-        accumulated_distance[i] = accumulated_distance[i - 1] + instance->get_distance(route[i], route[i - 1]);
+        accumulated_distance[i] = accumulated_distance[i - 1] + instance->distances_[route[i]][route[i - 1]];
     }
     if (accumulated_distance.back() <= preprocessor->max_cruise_distance_) {
         delete[] route;
@@ -554,18 +554,18 @@ ChargingMeta Follower::try_enumerate_n_stations_to_route(const int m_len, const 
         if (s.n_len == 0) {
             stk.pop(); // Backtrack
             bool feasible = true;
-            double piece_distance = accumulated_distance[chosen_pos[0]] + instance->get_distance(route[chosen_pos[0]], chosen_sta[0]);
+            double piece_distance = accumulated_distance[chosen_pos[0]] + instance->distances_[route[chosen_pos[0]]][chosen_sta[0]];
             if (piece_distance > preprocessor->max_cruise_distance_) feasible = false;
 
             for (int k = 1; feasible && k < cur_upper_bound; k++) {
                 piece_distance = accumulated_distance[chosen_pos[k]] - accumulated_distance[chosen_pos[k - 1] + 1];
-                piece_distance += instance->get_distance(chosen_sta[k - 1], route[chosen_pos[k - 1] + 1]);
-                piece_distance += instance->get_distance(chosen_sta[k], route[chosen_pos[k]]);
+                piece_distance += instance->distances_[chosen_sta[k - 1]][route[chosen_pos[k - 1] + 1]];
+                piece_distance += instance->distances_[chosen_sta[k]][route[chosen_pos[k]]];
                 if (piece_distance > preprocessor->max_cruise_distance_) feasible = false;
             }
 
             piece_distance = accumulated_distance.back() - accumulated_distance[chosen_pos[cur_upper_bound - 1] + 1];
-            piece_distance += instance->get_distance(route[chosen_pos[cur_upper_bound - 1] + 1], chosen_sta[cur_upper_bound - 1]);
+            piece_distance += instance->distances_[route[chosen_pos[cur_upper_bound - 1] + 1]][chosen_sta[cur_upper_bound - 1]];
             if (piece_distance > preprocessor->max_cruise_distance_) feasible = false;
 
             if (feasible) {
@@ -573,9 +573,9 @@ ChargingMeta Follower::try_enumerate_n_stations_to_route(const int m_len, const 
                 for (int k = 0; k < cur_upper_bound; k++) {
                     const int first_node = route[chosen_pos[k]];
                     const int second_node = route[chosen_pos[k] + 1];
-                    total_distance -= instance->get_distance(first_node, second_node);
-                    total_distance += instance->get_distance(first_node, chosen_sta[k]);
-                    total_distance += instance->get_distance(chosen_sta[k], second_node);
+                    total_distance -= instance->distances_[first_node][second_node];
+                    total_distance += instance->distances_[first_node][chosen_sta[k]];
+                    total_distance += instance->distances_[chosen_sta[k]][second_node];
                 }
                 // produce the repaired route
                 if (total_distance < cost) {

@@ -399,6 +399,21 @@
        print std_dev_value;
    }' "$output_file"
    
+   output_file="a.txt"
+   
+   awk '
+   /^Mean/ {
+       mean = $2
+       std = $NF   # Std Dev 后面那个数字
+   }
+   /^Min/ {
+       min = $3
+       print min
+       print mean
+       print std
+   }
+   ' "$output_file"
+   
    rm -f "$output_file"
    ```
 
