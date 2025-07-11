@@ -50,7 +50,7 @@ void Lahc::initialize_heuristic() {
 
 void Lahc::run_heuristic() {
     leader->load_individual(current);
-    // bool within_budget;
+    bool within_budget;
 
     do {
 
@@ -94,9 +94,8 @@ void Lahc::run_heuristic() {
             }
         }
 
-        // within_budget = stop_criteria == 0 ? !stop_criteria_max_evals() : !stop_criteria_max_exec_time(duration);
-    } while ((iter < 100'000L || idle_iter < iter / 5) && ratio_successful_moves > 0.001 && duration.count() < preprocessor->max_exec_time_);
-    // } while ((iter < 100'000L || idle_iter < iter / 5) && ratio_successful_moves > 0.001 && within_budget);
+        within_budget = stop_criteria == 0 ? !stop_criteria_max_evals() : !stop_criteria_max_exec_time(duration);
+    } while ((iter < 100'000L || idle_iter < iter / 5) && ratio_successful_moves > 0.001 && within_budget);
 
 }
 
