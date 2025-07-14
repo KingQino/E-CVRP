@@ -73,7 +73,7 @@ void LeaderCbma::prepare_temp_buffers(const int required_size) {
 }
 
 void LeaderCbma::prepare_moves() {
-        const std::vector<IntraFunc> intra_perturb_moves = {
+    intra_perturb_moves = {
         [this](int* r, const int l){return move1_intra_pert(r, l);},
         [this](int* r, const int l){return move2_intra_pert(r, l);},
         [this](int* r, const int l){return move3_intra_pert(r, l);},
@@ -83,7 +83,7 @@ void LeaderCbma::prepare_moves() {
         [this](int* r, const int l){return move7_intra_pert(r, l);}
     };
 
-    const std::vector<InterFunc> inter_perturb_moves = {
+    inter_perturb_moves = {
         [this](int* r1, int* r2, int& l1, int& l2, int& ld1, int& ld2) {
             return move1_inter_pert(r1, r2, l1, l2, ld1, ld2);
         },
@@ -110,7 +110,7 @@ void LeaderCbma::prepare_moves() {
         }
     };
 
-    const std::vector<InterFunc> inter_perturb_with_empty_moves = {
+    inter_perturb_with_empty_moves = {
         [this](int* r1, int* r2, int& l1, int& l2, int& ld1, int& ld2) {
             return move1_inter_with_empty_route_pert(r1, r2, l1, l2, ld1, ld2);
         },
@@ -123,7 +123,7 @@ void LeaderCbma::prepare_moves() {
     };
 
 
-    const std::vector<IntraImproFunc> intra_greedy_moves = {
+    intra_greedy_moves = {
     [this](int* r, const int l, const double t){return move1_intra_impro(r, l, greedy_accept, t);},
     [this](int* r, const int l, const double t){return move2_intra_impro(r, l, greedy_accept, t);},
     [this](int* r, const int l, const double t){return move3_intra_impro(r, l, greedy_accept, t);},
@@ -133,7 +133,7 @@ void LeaderCbma::prepare_moves() {
     [this](int* r, const int l, const double t){return move7_intra_impro(r, l, greedy_accept, t);}
     };
 
-    const std::vector<InterImproFunc> inter_greedy_moves = {
+    inter_greedy_moves = {
         [this](int* r1, int* r2, int& l1, int& l2, int& ld1, int& ld2, const double t) {
             return move1_inter_impro(r1, r2, l1, l2, ld1, ld2, greedy_accept, t);
         },
@@ -161,7 +161,7 @@ void LeaderCbma::prepare_moves() {
     };
 
 
-    const std::vector<LeaderCbma::IntraImproFunc> intra_neigh_moves = {
+    intra_neigh_moves = {
     [this](int* r, const int l, const double t) { return move1_intra_impro(r, l, neighbor_accept, t); },
     [this](int* r, const int l, const double t) { return move2_intra_impro(r, l, neighbor_accept, t); },
     [this](int* r, const int l, const double t) { return move3_intra_impro(r, l, neighbor_accept, t); },
@@ -171,7 +171,7 @@ void LeaderCbma::prepare_moves() {
     [this](int* r, const int l, const double t) { return move7_intra_impro(r, l, neighbor_accept, t); },
     };
 
-    const std::vector<LeaderCbma::InterImproFunc> inter_neigh_moves = {
+    inter_neigh_moves = {
         [this](int* r1, int* r2, int& l1, int& l2, int& d1, int& d2, const double t) {
             return move1_inter_impro(r1, r2, l1, l2, d1, d2, neighbor_accept, t);
         },

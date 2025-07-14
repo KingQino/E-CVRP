@@ -21,17 +21,17 @@ private:
 
     using IntraFunc = std::function<bool(int*, int)>;
     using InterFunc = std::function<bool(int*, int*, int&, int&, int&, int&)>;
-    const std::vector<IntraFunc> intra_perturb_moves;
-    const std::vector<InterFunc> inter_perturb_moves;
-    const std::vector<InterFunc> inter_perturb_with_empty_moves;
+    std::vector<IntraFunc> intra_perturb_moves;
+    std::vector<InterFunc> inter_perturb_moves;
+    std::vector<InterFunc> inter_perturb_with_empty_moves;
 
     using IntraImproFunc = std::function<bool(int*, int, double)>;
     using InterImproFunc = std::function<bool(int*, int*, int&, int&, int&, int&, double)>;
-    const std::vector<IntraImproFunc> intra_greedy_moves;
-    const std::vector<InterImproFunc> inter_greedy_moves;
+    std::vector<IntraImproFunc> intra_greedy_moves;
+    std::vector<InterImproFunc> inter_greedy_moves;
 
-    const std::vector<IntraImproFunc> intra_neigh_moves;
-    const std::vector<InterImproFunc> inter_neigh_moves;
+    std::vector<IntraImproFunc> intra_neigh_moves;
+    std::vector<InterImproFunc> inter_neigh_moves;
 
 
     unordered_set<pair<int, int>, PairHash> route_pairs;

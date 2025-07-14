@@ -20,6 +20,7 @@ Lahc::Lahc(const int seed, Case* instance, Preprocessor* preprocessor)
     current = nullptr;
     best_upper_cost = std::numeric_limits<double>::max();
     global_best = make_unique<Individual>(instance, preprocessor);
+    history_noise = uniform_real_distribution(0.95, 1.05); // Noise for history list
 
     initializer = new Initializer(random_engine, instance, preprocessor);
     leader = new LeaderLahc(random_engine, instance, preprocessor);
@@ -41,16 +42,33 @@ void Lahc::initialize_heuristic() {
     routes.clear();
     routes.shrink_to_fit();
 
-    history_list.assign(history_length, current->upper_cost);
     this->iter = 0L;
     this->idle_iter = 0L;
     this->ratio_successful_moves = 1.0; // the largest decimal value
     this->num_successful_moves_per_history = static_cast<double>(history_length);
 }
 
-void Lahc::run_heuristic() {
+void Lahc::restart_heuristic() {
+    *current = *global_best; // Reset current solution to the global best
     leader->load_individual(current);
+    leader->perturbation(100);
+
+    iter = 0L;
+    idle_iter = 0L;
+    ratio_successful_moves = 1.0; // the largest decimal value
+    num_successful_moves_per_history = static_cast<double>(history_length);
+}
+
+void Lahc::run_heuristic() {
+    // leader->load_individual(current);
     bool within_budget;
+
+    leader->fully_greedy_local_optimum(current);
+    best_upper_cost = current->upper_cost;
+    for (int i =0; i < history_length; i++) {
+        history_list[i] = current->upper_cost * history_noise(random_engine);
+    }
+    // history_list.assign(history_length, current->upper_cost * 1.05);
 
     do {
 
