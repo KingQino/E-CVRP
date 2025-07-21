@@ -132,13 +132,13 @@ void Lahc::run() {
     switch (stop_criteria) {
         case 0:
             while (!stop_criteria_max_evals()) {
-                restart_idx == 0 ? initialize_heuristic() : restart_heuristic();
+                initialize_heuristic();
                 run_heuristic();
             }
             break;
         case 1:
             while (!stop_criteria_max_exec_time(duration)) {
-                restart_idx == 0 ? initialize_heuristic() : restart_heuristic();
+                initialize_heuristic();
                 run_heuristic();
                 duration = std::chrono::high_resolution_clock::now() - start;
             }
