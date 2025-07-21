@@ -33,6 +33,7 @@ public:
     double best_upper_cost;                     // The best upper-level cost found so far
     std::unique_ptr<Individual> global_best;    // Global best solution found so far
     std::uniform_real_distribution<> history_noise;
+    int restart_idx;                      // Restart count for the heuristic
 
     Initializer* initializer;
     LeaderLahc* leader;

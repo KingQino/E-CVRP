@@ -21,6 +21,7 @@ Lahc::Lahc(const int seed, Case* instance, Preprocessor* preprocessor)
     best_upper_cost = std::numeric_limits<double>::max();
     global_best = make_unique<Individual>(instance, preprocessor);
     history_noise = uniform_real_distribution(0.95, 1.05); // Noise for history list
+    restart_idx = 0;
 
     initializer = new Initializer(random_engine, instance, preprocessor);
     leader = new LeaderLahc(random_engine, instance, preprocessor);
@@ -46,29 +47,29 @@ void Lahc::initialize_heuristic() {
     this->idle_iter = 0L;
     this->ratio_successful_moves = 1.0; // the largest decimal value
     this->num_successful_moves_per_history = static_cast<double>(history_length);
-}
-
-void Lahc::restart_heuristic() {
-    *current = *global_best; // Reset current solution to the global best
-    leader->load_individual(current);
-    leader->perturbation(100);
-
-    iter = 0L;
-    idle_iter = 0L;
-    ratio_successful_moves = 1.0; // the largest decimal value
-    num_successful_moves_per_history = static_cast<double>(history_length);
-}
-
-void Lahc::run_heuristic() {
-    // leader->load_individual(current);
-    bool within_budget;
 
     leader->fully_greedy_local_optimum(current);
     best_upper_cost = current->upper_cost;
     for (int i =0; i < history_length; i++) {
         history_list[i] = current->upper_cost * history_noise(random_engine);
     }
-    // history_list.assign(history_length, current->upper_cost * 1.05);
+}
+
+void Lahc::restart_heuristic() {
+    *current = *global_best; // Reset current solution to the global best
+    leader->load_individual(current);
+
+    iter = 0L;
+    idle_iter = 0L;
+    ratio_successful_moves = 1.0; // the largest decimal value
+    num_successful_moves_per_history = static_cast<double>(history_length);
+
+    leader->perturbation(100);
+    leader->fully_greedy_local_optimum(current);
+}
+
+void Lahc::run_heuristic() {
+    bool within_budget;
 
     do {
 
@@ -115,6 +116,7 @@ void Lahc::run_heuristic() {
         within_budget = stop_criteria == 0 ? !stop_criteria_max_evals() : !stop_criteria_max_exec_time(duration);
     } while ((iter < 100'000L || idle_iter < iter / 5) && ratio_successful_moves > 0.001 && within_budget);
 
+    ++restart_idx;
 }
 
 void Lahc::run() {
@@ -130,13 +132,13 @@ void Lahc::run() {
     switch (stop_criteria) {
         case 0:
             while (!stop_criteria_max_evals()) {
-                initialize_heuristic();
+                restart_idx == 0 ? initialize_heuristic() : restart_heuristic();
                 run_heuristic();
             }
             break;
         case 1:
             while (!stop_criteria_max_exec_time(duration)) {
-                initialize_heuristic();
+                restart_idx == 0 ? initialize_heuristic() : restart_heuristic();
                 run_heuristic();
                 duration = std::chrono::high_resolution_clock::now() - start;
             }
