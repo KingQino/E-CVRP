@@ -429,9 +429,10 @@ void Follower::recursive_charging_placement(const int m_len, const int n_len, in
                 const int second_node = route[chosen_pos[j] + 1];
                 const int station = preprocessor->best_station_[first_node][second_node];
 
+                // side nodes to the best station has been cached
                 dis_sum -= instance->get_distance(first_node, second_node);
-                dis_sum += instance->get_distance(first_node, station);
-                dis_sum += instance->get_distance(station, second_node);
+                dis_sum += instance->distances_[first_node][station];
+                dis_sum += instance->distances_[station][second_node];
             }
             if (dis_sum < final_cost) {
                 final_cost = dis_sum;
@@ -447,17 +448,17 @@ void Follower::recursive_charging_placement(const int m_len, const int n_len, in
             bool should_pop = false;
             const int first_node = route[s.i];
             const int second_node = route[s.i + 1];
-            const int station = preprocessor->best_station_[first_node][second_node];
+            const int station = preprocessor->best_station_[first_node][second_node]; // has been cached
 
             if (cur_upper_bound == s.n_len) {
-                const double one_dis = instance->get_distance(first_node, station);
+                const double one_dis = instance->distances_[first_node][station];
                 if (accumulated_distance[s.i] + one_dis > preprocessor->max_cruise_distance_) {
                     should_pop = true;
                 }
             } else {
                 const int last_pos = chosen_pos[cur_upper_bound - s.n_len - 1];
                 const double one_dis = instance->get_distance(route[last_pos + 1], preprocessor->best_station_[route[last_pos]][route[last_pos + 1]]);
-                const double two_dis = instance->get_distance(first_node, station);
+                const double two_dis = instance->distances_[first_node][station];
 
                 const double dist = accumulated_distance[s.i] - accumulated_distance[last_pos + 1];
                 if (dist + one_dis + two_dis > preprocessor->max_cruise_distance_) {
@@ -467,7 +468,7 @@ void Follower::recursive_charging_placement(const int m_len, const int n_len, in
 
             if (!should_pop && s.n_len == 1) {
                 const double one_dis = accumulated_distance[length - 1] - accumulated_distance[s.i + 1]
-                                + instance->get_distance(station, route[s.i + 1]);
+                                + instance->distances_[station][route[s.i + 1]];
                 if (one_dis > preprocessor->max_cruise_distance_) {
                     s.i++;
                     continue;
