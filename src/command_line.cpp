@@ -59,6 +59,8 @@ void CommandLine::parse_parameters(Parameters& params) const {
         params.max_attempts = get_int("max_attempts", params.max_attempts);
         params.low_opt_trigger_threshold = get_double("low_thresh", params.low_opt_trigger_threshold);
         params.low_opt_trigger_margin = get_double("low_margin", params.low_opt_trigger_margin);
+        params.noise_lb = get_double("noise_lb", params.noise_lb);
+        params.noise_ub = get_double("noise_ub", params.noise_ub);
         params.T0 = get_double("t0", params.T0);
         params.alpha = get_double("alpha", params.alpha);
         params.max_neigh_attempts = get_int("neigh_attempts", params.max_neigh_attempts);
@@ -88,6 +90,8 @@ void CommandLine::display_help() {
               << "  -max_attempts [int]          : LAHC max attempts (default: 25)\n"
               << "  -low_thresh [double]         : LAHC threshold for triggering lower optimisation, [0, 1] (default: 0.3)\n"
               << "  -low_margin [double]         : LAHC margin related to the best upper cost for lower optimisation, >= 1.0 (default: 1.10)\n"
+              << "  -noise_lb [double]           : LAHC lower bound of noise range for history list value (default: 0.95)\n"
+              << "  -noise_ub [double]           : LAHC upper bound of noise range for history list value (default: 1.05)\n"
               << "  -rt_mul [int]                : Runtime multiplier (default: 1)\n"
               << "  -nb_granular [int]           : Granular search parameter (default: 20)\n"
               << "  -is_hard_constraint [0|1]    : Whether to use hard constraint (default: 1)\n"

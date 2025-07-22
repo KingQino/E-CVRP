@@ -20,7 +20,7 @@ Lahc::Lahc(const int seed, Case* instance, Preprocessor* preprocessor)
     current = nullptr;
     best_upper_cost = std::numeric_limits<double>::max();
     global_best = make_unique<Individual>(instance, preprocessor);
-    history_noise = uniform_real_distribution(0.95, 1.05); // Noise for history list
+    history_noise = uniform_real_distribution(preprocessor->params.noise_lb, preprocessor->params.noise_ub); // Noise for history list
     restart_idx = 0;
 
     initializer = new Initializer(random_engine, instance, preprocessor);
