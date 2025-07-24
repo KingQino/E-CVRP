@@ -21,6 +21,7 @@ Lahc::Lahc(const int seed, Case* instance, Preprocessor* preprocessor)
     best_upper_cost = std::numeric_limits<double>::max();
     global_best = make_unique<Individual>(instance, preprocessor);
     history_noise = uniform_real_distribution(preprocessor->params.noise_lb, preprocessor->params.noise_ub); // Noise for history list
+    his_refill_idx = 0;
     restart_idx = 0;
 
     initializer = new Initializer(random_engine, instance, preprocessor);
@@ -85,6 +86,7 @@ void Lahc::run_heuristic() {
 
             flush_row_into_evol_log();
             num_successful_moves_per_history = 0.;
+            his_refill_idx++;
         }
 
         const bool has_moved = leader->random_walk(history_cost);
