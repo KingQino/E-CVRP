@@ -38,7 +38,8 @@ Lahc::~Lahc() {
 
 void Lahc::initialize_heuristic() {
     delete current;
-    vector<vector<int>> routes = initializer->routes_constructor_with_hien_method();
+    // vector<vector<int>> routes = initializer->routes_constructor_with_hien_method();
+    vector<vector<int>> routes = initializer->routes_constructor_with_split();
     current = new Individual(instance, preprocessor, routes,instance->compute_total_distance(routes),
         instance->compute_demand_sum_per_route(routes));
     routes.clear();
