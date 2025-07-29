@@ -51,7 +51,7 @@ void Lahc::initialize_heuristic() {
     this->num_successful_moves_per_history = static_cast<double>(history_length);
 
     leader->fully_greedy_local_optimum(current);
-    best_upper_cost = current->upper_cost;
+    best_upper_cost = std::min(best_upper_cost,current->upper_cost);
     for (int i =0; i < history_length; i++) {
         history_list[i] = current->upper_cost * history_noise(random_engine);
     }
@@ -87,7 +87,7 @@ void Lahc::run_heuristic() {
 
             flush_row_into_evol_log();
             num_successful_moves_per_history = 0.;
-            his_refill_idx++;
+            // his_refill_idx++;
         }
 
         const bool has_moved = leader->random_walk(history_cost);
