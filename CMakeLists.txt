@@ -44,8 +44,7 @@ set(DEPENDENCIES
         src/follower.cpp
         include/leader_lahc.hpp
         src/leader_lahc.cpp
-        include/leader_cbma.hpp
-        src/leader_cbma.cpp)
+)
 
 # Main executable
 add_executable(Run main.cpp ${DEPENDENCIES})

@@ -61,9 +61,6 @@ void CommandLine::parse_parameters(Parameters& params) const {
         params.low_opt_trigger_margin = get_double("low_margin", params.low_opt_trigger_margin);
         params.noise_lb = get_double("noise_lb", params.noise_lb);
         params.noise_ub = get_double("noise_ub", params.noise_ub);
-        params.T0 = get_double("t0", params.T0);
-        params.alpha = get_double("alpha", params.alpha);
-        params.max_neigh_attempts = get_int("neigh_attempts", params.max_neigh_attempts);
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         display_help();
@@ -79,10 +76,10 @@ void CommandLine::display_help() {
     std::cout << "--------------------------------------------------- Parameters Instruction  ---------------------------------------------------" << std::endl;
     std::cout << "Usage: ./Run [options]\n"
               << "Options:\n"
-              << "  -alg [enum]                  : Algorithm name (e.g., Cbma, Lahc, Sga)\n"
+              << "  -alg [enum]                  : Algorithm name (e.g., Cbma, Lahc)\n"
               << "  -ins [filename]              : Problem instance filename\n"
               << "  -log [0|1]                   : Enable logging (default: 0)\n"
-              << "  -stp [0|1|2]                 : Stopping criteria, 0: max-evals, 1: max-time, 2: obj-converge (default: 0)\n"
+              << "  -stp [0|1]                   : Stopping criteria, 0: max-evals, 1: max-time (default: 0)\n"
               << "  -mth [0|1]                   : Enable multi-threading (default: 1)\n"
               << "  -exp [0|1]                   : Activate experimental mode (default: 0)\n"
               << "  -seed [int]                  : Random seed (default: 0)\n"
@@ -91,17 +88,7 @@ void CommandLine::display_help() {
               << "  -low_thresh [double]         : LAHC threshold for triggering lower optimisation, [0, 1] (default: 0.3)\n"
               << "  -low_margin [double]         : LAHC margin related to the best upper cost for lower optimisation, >= 1.0 (default: 1.10)\n"
               << "  -noise_lb [double]           : LAHC lower bound of noise range for history list value (default: 0.95)\n"
-              << "  -noise_ub [double]           : LAHC upper bound of noise range for history list value (default: 1.05)\n"
-              << "  -rt_mul [int]                : Runtime multiplier (default: 1)\n"
-              << "  -nb_granular [int]           : Granular search parameter (default: 20)\n"
-              << "  -is_hard_constraint [0|1]    : Whether to use hard constraint (default: 1)\n"
-              << "  -is_duration_constraint [0|1]: Whether to consider duration constraint (default: 0)\n"
-              << "  -neigh_attempts [int]        : Maximum attempts for neighbourhood exploration (default: 10000)\n"
-              << "  -t0 [double]                 : Initial temperature for simulated annealing (default: 30.0)\n"
-              << "  -alpha [double]              : Cooling rate for simulated annealing (default: 0.98)\n"
-              << "  -min_win [int]               : Minimum window size for recent deltas (default: 20)\n"
-              << "  -max_win [int]               : Maximum window size for recent deltas (default: 500)\n"
-              << "  -win_k [double]              : k value for dynamic window size calculation (default: 0.5)\n";
+              << "  -noise_ub [double]           : LAHC upper bound of noise range for history list value (default: 1.05)\n";
     std::cout << "-------------------------------------------------------------------------------------------------------------------------------" << std::endl;
 }
 

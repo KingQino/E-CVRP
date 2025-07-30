@@ -32,8 +32,7 @@ public:
     Individual* current;                        // Current solution s
     double best_upper_cost;                     // The best upper-level cost found so far
     std::unique_ptr<Individual> global_best;    // Global best solution found so far
-    std::uniform_real_distribution<> history_noise;
-    int his_refill_idx;                         // History list restart index, used to track the history of refill counts
+    std::uniform_real_distribution<> history_noise; // history list initialisation noise
     int restart_idx;                            // Restart count for the heuristic
 
     Initializer* initializer;
@@ -44,7 +43,6 @@ public:
     ~Lahc() override;
     void run() override;
     void initialize_heuristic() override;
-    void restart_heuristic();
     void run_heuristic() override;
     void open_log_for_evolution() override;
     void close_log_for_evolution() override;

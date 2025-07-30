@@ -21,7 +21,6 @@ Lahc::Lahc(const int seed, Case* instance, Preprocessor* preprocessor)
     best_upper_cost = std::numeric_limits<double>::max();
     global_best = make_unique<Individual>(instance, preprocessor);
     history_noise = uniform_real_distribution(preprocessor->params.noise_lb, preprocessor->params.noise_ub); // Noise for history list
-    his_refill_idx = 0;
     restart_idx = 0;
 
     initializer = new Initializer(random_engine, instance, preprocessor);
@@ -45,29 +44,17 @@ void Lahc::initialize_heuristic() {
     routes.clear();
     routes.shrink_to_fit();
 
+    leader->fully_greedy_local_optimum(current);
+    for (int i =0; i < history_length; i++) {
+        history_list[i] = current->upper_cost * history_noise(random_engine);
+    }
+
+    this->best_upper_cost = std::min(best_upper_cost,current->upper_cost);
+
     this->iter = 0L;
     this->idle_iter = 0L;
     this->ratio_successful_moves = 1.0; // the largest decimal value
     this->num_successful_moves_per_history = static_cast<double>(history_length);
-
-    leader->fully_greedy_local_optimum(current);
-    best_upper_cost = std::min(best_upper_cost,current->upper_cost);
-    for (int i =0; i < history_length; i++) {
-        history_list[i] = current->upper_cost * history_noise(random_engine);
-    }
-}
-
-void Lahc::restart_heuristic() {
-    *current = *global_best; // Reset current solution to the global best
-    leader->load_individual(current);
-
-    iter = 0L;
-    idle_iter = 0L;
-    ratio_successful_moves = 1.0; // the largest decimal value
-    num_successful_moves_per_history = static_cast<double>(history_length);
-
-    leader->perturbation(100);
-    leader->fully_greedy_local_optimum(current);
 }
 
 void Lahc::run_heuristic() {
@@ -78,7 +65,7 @@ void Lahc::run_heuristic() {
         const double current_cost = leader->upper_cost;
 
         const auto v = iter % history_length;
-        double history_cost = history_list[v];
+        const double history_cost = history_list[v];
 
         if (v == 0L) {
             history_list_metrics = calculate_statistical_indicators(history_list);
@@ -87,7 +74,6 @@ void Lahc::run_heuristic() {
 
             flush_row_into_evol_log();
             num_successful_moves_per_history = 0.;
-            // his_refill_idx++;
         }
 
         const bool has_moved = leader->random_walk(history_cost);
@@ -106,10 +92,7 @@ void Lahc::run_heuristic() {
         iter++;
         duration = std::chrono::high_resolution_clock::now() - start;
 
-        if (ratio_successful_moves < low_opt_trigger_threshold &&
-            has_moved &&
-            candidate_cost < best_upper_cost * low_opt_trigger_margin) {
-
+        if (has_moved && candidate_cost < best_upper_cost * low_opt_trigger_margin) {
             follower->run(current);
             if (current->lower_cost < global_best->lower_cost) {
                 *global_best = *current;
@@ -152,7 +135,8 @@ void Lahc::run() {
             break;
     }
 
-    follower->run(global_best.get());
+    // The refinement step is not necessary
+    follower->refine(global_best.get());
 
     if (enable_logging) {
         flush_row_into_evol_log();

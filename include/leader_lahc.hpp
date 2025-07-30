@@ -23,12 +23,6 @@ class LeaderLahc {
     std::vector<IntraImproFunc> intra_greedy_moves;
     std::vector<InterImproFunc> inter_greedy_moves;
 
-    using IntraFunc = std::function<bool(int*, int)>;
-    using InterFunc = std::function<bool(int*, int*, int&, int&, int&, int&)>;
-    std::vector<IntraFunc> intra_perturb_moves;
-    std::vector<InterFunc> inter_perturb_moves;
-    std::vector<InterFunc> inter_perturb_with_empty_moves;
-
     unordered_set<pair<int, int>, PairHash> route_pairs;
 
     int* temp_r1 = nullptr;
@@ -57,9 +51,12 @@ public:
     ~LeaderLahc();
 
     void clean();
-    bool random_walk(const double& history_val);    // Random walk exploration with late acceptance criteria
     void load_individual(const Individual* ind);
     void export_individual(Individual* ind) const;
+
+    /* =========================================================== */
+    /* Random walk */
+    bool random_walk(const double& history_val);    // Random walk exploration with late acceptance criteria
 
     static void moveItoJ(int* route, int a, int b);
     [[nodiscard]] bool late_accept(const double& change) const;
@@ -109,35 +106,6 @@ public:
     bool move7_intra_impro(int* route, int length, const AcceptanceFunc& accept_func, double temperature);
     bool move8_inter_impro(int* route1, int* route2, int& length1, int& length2, int& loading1, int& loading2, const AcceptanceFunc& accept_func, double temperature);
     bool move9_inter_impro(int* route1, int* route2, int& length1, int& length2, int& loading1, int& loading2, const AcceptanceFunc& accept_func, double temperature);
-
-    /* =========================================================== */
-    /* Perturbation */
-    uniform_int_distribution<> perturb_move_dist;
-    bool perturbation(int strength);
-    [[nodiscard]] std::pair<int, int> randomly_select_diff_route_pair() const noexcept;
-    [[nodiscard]] bool perform_intra_move_pert(const IntraFunc& move_func) const;
-    [[nodiscard]] bool perform_inter_move_pert(const InterFunc& move_func);
-    [[nodiscard]] bool perform_inter_move_with_empty_pert(const InterFunc& move_func);
-    // basic perturbation moves
-    bool move1_intra_pert(int* route, int length);
-    bool move1_inter_pert(int* route1, int* route2, int& length1, int& length2, int& loading1, int& loading2);
-    bool move1_inter_with_empty_route_pert(int* route1, int* route2, int& length1, int& length2, int& loading1, int& loading2);
-    bool move2_intra_pert(int* route, int length);
-    bool move2_inter_pert(int* route1, int* route2, int& length1, int& length2, int& loading1, int& loading2);
-    bool move3_intra_pert(int* route, int length);
-    bool move3_inter_pert(int* route1, int* route2, int& length1, int& length2, int& loading1, int& loading2);
-    bool move4_intra_pert(int* route, int length);
-    bool move4_inter_pert(int* route1, int* route2, int length1, int length2, int& loading1, int& loading2);
-    bool move5_intra_pert(int* route, int length);
-    bool move5_inter_pert(int* route1, int* route2, int& length1, int& length2, int& loading1, int& loading2);
-    bool move6_intra_pert(int* route, int length);
-    bool move6_inter_pert(int* route1, int* route2, int length1, int length2, int& loading1, int& loading2);
-    bool move7_intra_pert(int* route, int length);
-    bool move8_inter_pert(int* route1, int* route2, int& length1, int& length2, int& loading1, int& loading2);
-    bool move8_inter_with_empty_route_pert(int* route1, int* route2, int& length1, int& length2, int& loading1, int& loading2);
-    bool move9_inter_pert(int* route1, int* route2, int& length1, int& length2, int& loading1, int& loading2);
-    bool move9_inter_with_empty_route_pert(int* route1, int* route2, int& length1, int& length2, int& loading1, int& loading2);
-
 
     friend ostream& operator<<(ostream& os, const LeaderLahc& leader);
 };

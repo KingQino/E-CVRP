@@ -31,9 +31,6 @@ struct Parameters {
     double low_opt_trigger_margin;      // LAHC: The margin to trigger the lower-level optimisation, >= 1.0
     double noise_lb;                    // LAHC: The lower bound of noise range for history list value
     double noise_ub;                    // LAHC: The upper bound of noise range for history list value
-    double T0;                          // CBMA: Initial temperature for simulated annealing (if applicable)
-    double alpha;                       // CBMA: Cooling rate for simulated annealing (if applicable)
-    int max_neigh_attempts;             // CBMA: Maximum attempts for neighbourhood exploration
 
     // Constructor: Initializes default values
     Parameters() :
@@ -51,9 +48,6 @@ struct Parameters {
         low_opt_trigger_margin = 1.10;   // Relative cost margin (≥ 1.0) within which the candidate solution must fall to trigger lower-level optimization
         noise_lb = 0.95;
         noise_ub = 1.05;
-        T0 = 30.0;
-        alpha = 0.98;
-        max_neigh_attempts = 10'000;
     }
 };
 
