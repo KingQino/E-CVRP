@@ -9,9 +9,10 @@
   > Our paper.
 
 - **Table of Contents**
+  
   1. [Usage](#Usage)
   2. [Architecture](#Architecture)
-  3. [Existing Algorithms](#Existing Algorithms)
+  3. [Algorithms](#Algorithms)
   4. [Script](#Script)
   5. [Licence](#Licence)
 
@@ -37,7 +38,7 @@
 3. Run
 
    ```shell
-   ./Run -alg lahc -ins E-n22-k4.evrp -log 1 -stp 0 -mth 1 -his_len 5723 -max_attempts 94 -low_margin 1.01 -noise_lb 0.95 -noise_ub 1.05
+   ./Run -alg lahc -ins E-n22-k4.evrp -log 1 -stp 0 -mth 1 -his_len 5723 -max_attempts 60 -low_margin 1.01 -noise_lb 0.95 -noise_ub 1.05
    ```
 
    Parameters Instruction
@@ -135,7 +136,7 @@
 
 
 
-## Existing Algorithms
+## Algorithms
 
 ### Stop Criteria
 
@@ -155,27 +156,27 @@
 
 ### Overview of Methods on the WCCI-2020 EVRP Benchmark
 
-| Methods                              | Stop Criteria | Language/Tool | Code Available |
-| ------------------------------------ | ------------- | ------------- | -------------- |
-| MILP [^mavrovouniotis2020techreport] | Max Evals     | Gurobi        | --             |
-| VNS                                  | Max Evals     | C++           | No             |
-| SA                                   | Max Evals     | C++           | No             |
-| GA [^hien2023greedy]                 | Max Evals     | C++           | Yes            |
-| HHASA-TS [^rodriguez2024new]         | Max Evals     | MATLAB        | Yes            |
-| BACO [^jia2021bilevel]               | Max Time      | C++           | Yes            |
-| CBACO-I [^jia2022confidence]         | Max Time      | C++           | Yes            |
-| TAMLS [^chen2024efficient]           | Max Time      | C++           | No             |
-| CBMA [^qin2024confidence]            | Max Time      | C++           | Yes            |
-| B-LAHC                               | Both          | C++           | Yes            |
+| Methods  | Stop Criteria | Language/Tool | Code Available |
+| -------- | ------------- | ------------- | -------------- |
+| MILP     | Max Evals     | Gurobi        | --             |
+| VNS      | Max Evals     | C++           | No             |
+| SA       | Max Evals     | C++           | No             |
+| GA       | Max Evals     | C++           | Yes            |
+| HHASA-TS | Max Evals     | MATLAB        | Yes            |
+| BACO     | Max Time      | C++           | Yes            |
+| CBACO-I  | Max Time      | C++           | Yes            |
+| TAMLS    | Max Time      | C++           | No             |
+| CBMA     | Max Time      | C++           | Yes            |
+| B-LAHC   | Both          | C++           | Yes            |
 
-- MILP: 
+- MILP: [technical report](https://mavrovouniotis.github.io/EVRPcompetition2020/)
 - VNS: [code](https://github.com/wolledav/VNS-EVRP-2020)
 - GA: [paper](https://www.researchgate.net/profile/Cong-Dao-Tran/publication/360604653_A_greedy_search_based_evolutionary_algorithm_for_electric_vehicle_routing_problem/links/641d203a315dfb4ccea54309/A-greedy-search-based-evolutionary-algorithm-for-electric-vehicle-routing-problem.pdf), [original code](https://github.com/NeiH4207/EVRP), [modified code]
-- HHASA-TS: [paper], [code]
-- BACO: [paper], [original code], [modified code]
-- CBACO-I: [paper], [original code], [modified code]
-- TAMLS: [paper]
-- CBMA: [paper], [code]
+- HHASA-TS: [paper](https://www.sciencedirect.com/science/article/pii/S0957417424010637), [code](https://github.com/erickre12/HHASARL.git)
+- BACO: [paper](https://ieeexplore.ieee.org/document/9409782), [original code](https://github.com/Flyki/CEVRP), [modified code]
+- CBACO-I: [paper](https://ieeexplore.ieee.org/document/9684529), [original code](https://github.com/Flyki/CEVRP), [modified code]
+- TAMLS: [paper](https://ieeexplore.ieee.org/document/10382457)
+- CBMA: [paper](https://ieeexplore.ieee.org/abstract/document/10611804), [code](https://github.com/KingQino/CEVRP-with-Adaptive-Selection)
 
 *The modified code* includes my modifications on the original version, including (1) uniform stopping criteria, and (2) enhanced statistical logging.
 
