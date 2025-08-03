@@ -143,7 +143,7 @@
 
 - Max Evals (suggested in the IEEE WCCI 2020 benchmark): 
   
-  ​								![Max Evals](https://latex.codecogs.com/svg.image?\text{Max Evals}=25{,}000\times pz) 
+  ​								![Max Evals](https://latex.codecogs.com/svg.image?\text{Max%20Evals}%20=%2025{,}000%20\times%20pz)
   
   where _pz_ is the number of depot, customers and charging stations. Each complete evaluation has a time complexity of O(n<sup>2</sup>). Notably, each access to an arc weight _d<sub>ij</sub>_ consumes a fraction _1/pz_ of the budget, meaning that every neighbourhood move contributes to the overall evaluation count.
 
