@@ -142,18 +142,16 @@
 ### Stop Criteria
 
 - Max Evals (suggested in the IEEE WCCI 2020 benchmark): 
-  $$
-  \text{Max Evals} = 25{,}000 \times pz\notag
-  $$
-  where $pz = |\{v_0\}| + |\mathcal{V}_c| + |\mathcal{V}_f|$. Each complete evaluation has a time complexity of $\mathcal{O}(n^2)$. Notably, each access to an arc weight $d_{ij}$ consumes a fraction $1/pz$ of the budget, meaning that every neighbourhood move contributes to the overall evaluation count.
+  
+  ​								![Max Evals](https://latex.codecogs.com/svg.image?\text{Max Evals}=25{,}000\times pz) 
+  
+  where _pz_ is the number of depot, customers and charging stations. Each complete evaluation has a time complexity of O(n<sup>2</sup>). Notably, each access to an arc weight _d<sub>ij</sub>_ consumes a fraction _1/pz_ of the budget, meaning that every neighbourhood move contributes to the overall evaluation count.
 
 - Max Time (introduced by Ya-Hui et al.):
-  $$
-  \text{Max Time} = v \cdot \frac{|V_c| + |V_f|}{100} \quad \text{(hours)}
-  \notag
-  $$
-
-  where the parameter $v$ is set to 1, 2, and 3 for instance groups E22–E101, X143–X916, and X1001 respectively.
+  
+  ​								![Max Time Formula](https://latex.codecogs.com/svg.image?\text{Max%20Time}%20=%20v%20\cdot%20\frac{|V_c|%20+%20|V_f|}{100}%20\quad%20\text{(hours)})
+  
+  where the parameter _v_ is set to 1, 2, and 3 for instance groups E22–E101, X143–X916, and X1001 respectively.
 
 ### Overview of Methods on the WCCI-2020 EVRP Benchmark
 
