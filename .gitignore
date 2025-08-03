@@ -4,6 +4,7 @@
 /cmake-build-debug-llvm/
 .DS_Store
 stats
+experiments
 
 # Prerequisites
 *.d

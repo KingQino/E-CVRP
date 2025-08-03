@@ -13,8 +13,9 @@
   1. [Usage](#Usage)
   2. [Architecture](#Architecture)
   3. [Algorithms](#Algorithms)
-  4. [Script](#Script)
-  5. [Licence](#Licence)
+  4. [Experiments](#Experiments)
+  5. [Script](#Script)
+  6. [Licence](#Licence)
 
 
 
@@ -159,7 +160,7 @@
 | Methods  | Stop Criteria | Language/Tool | Code Available |
 | -------- | ------------- | ------------- | -------------- |
 | MILP     | Max Evals     | Gurobi        | --             |
-| VNS      | Max Evals     | C++           | No             |
+| VNS      | Max Evals     | C++           | Yes            |
 | SA       | Max Evals     | C++           | No             |
 | GA       | Max Evals     | C++           | Yes            |
 | HHASA-TS | Max Evals     | MATLAB        | Yes            |
@@ -170,15 +171,21 @@
 | B-LAHC   | Both          | C++           | Yes            |
 
 - MILP: [technical report](https://mavrovouniotis.github.io/EVRPcompetition2020/)
-- VNS: [code](https://github.com/wolledav/VNS-EVRP-2020)
-- GA: [paper](https://www.researchgate.net/profile/Cong-Dao-Tran/publication/360604653_A_greedy_search_based_evolutionary_algorithm_for_electric_vehicle_routing_problem/links/641d203a315dfb4ccea54309/A-greedy-search-based-evolutionary-algorithm-for-electric-vehicle-routing-problem.pdf), [original code](https://github.com/NeiH4207/EVRP), [modified code]
+- VNS: [original code](https://github.com/wolledav/VNS-EVRP-2020), [modified code](https://github.com/KingQino/VNS-EVRP-2020/tree/broker)
+- GA: [paper](https://www.researchgate.net/profile/Cong-Dao-Tran/publication/360604653_A_greedy_search_based_evolutionary_algorithm_for_electric_vehicle_routing_problem/links/641d203a315dfb4ccea54309/A-greedy-search-based-evolutionary-algorithm-for-electric-vehicle-routing-problem.pdf), [original code](https://github.com/NeiH4207/EVRP), [modified code](https://github.com/KingQino/HMAGS-Hien)
 - HHASA-TS: [paper](https://www.sciencedirect.com/science/article/pii/S0957417424010637), [code](https://github.com/erickre12/HHASARL.git)
-- BACO: [paper](https://ieeexplore.ieee.org/document/9409782), [original code](https://github.com/Flyki/CEVRP), [modified code]
-- CBACO-I: [paper](https://ieeexplore.ieee.org/document/9684529), [original code](https://github.com/Flyki/CEVRP), [modified code]
+- BACO: [paper](https://ieeexplore.ieee.org/document/9409782), [original code](https://github.com/Flyki/CEVRP), [modified code](https://github.com/KingQino/CBACO-Yahui/)
+- CBACO-I: [paper](https://ieeexplore.ieee.org/document/9684529), [original code](https://github.com/Flyki/CEVRP), [modified code](https://github.com/KingQino/CBACO-Yahui/)
 - TAMLS: [paper](https://ieeexplore.ieee.org/document/10382457)
 - CBMA: [paper](https://ieeexplore.ieee.org/abstract/document/10611804), [code](https://github.com/KingQino/CEVRP-with-Adaptive-Selection)
 
 *The modified code* includes my modifications on the original version, including (1) uniform stopping criteria, and (2) enhanced statistical logging.
+
+
+
+## Experiments
+
+- Pearson coefficient
 
 
 
