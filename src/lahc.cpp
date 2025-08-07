@@ -48,6 +48,8 @@ void Lahc::initialize_heuristic() {
     for (int i =0; i < history_length; i++) {
         history_list[i] = current->upper_cost * history_noise(random_engine);
     }
+    follower->run(current);
+    *global_best = *current;
 
     this->best_upper_cost = std::min(best_upper_cost,current->upper_cost);
 
