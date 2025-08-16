@@ -107,7 +107,7 @@ void Lahc::run_heuristic() {
     ++restart_idx;
 }
 
-void Lahc::run() {
+double Lahc::run() {
     // Initialize time variables
     start = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration<double>::zero();
@@ -145,6 +145,8 @@ void Lahc::run() {
         close_log_for_evolution();  // Close log if logging is enabled
         save_log_for_solution();    // Save the log if logging is enabled
     }
+
+    return follower->lower_cost;
 }
 
 void Lahc::open_log_for_evolution() {
