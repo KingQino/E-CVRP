@@ -148,7 +148,7 @@ double Lahc::run() {
         save_log_for_solution();    // Save the log if logging is enabled
     }
 
-    return follower->lower_cost;
+    return global_best->lower_cost;
 }
 
 void Lahc::open_log_for_evolution() {
@@ -207,7 +207,6 @@ void Lahc::save_log_for_solution() {
 
     log_solution.open(directory / file_name);
     log_solution << fixed << setprecision(5) << global_best->lower_cost << endl;
-    follower->run(global_best.get());
     for (int i = 0; i < follower->num_routes; ++i) {
         for (int j = 0; j < follower->lower_num_nodes_per_route[i]; ++j) {
             log_solution << follower->lower_routes[i][j] << ",";
