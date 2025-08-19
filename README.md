@@ -2,7 +2,7 @@
 
 - This project contains a specific algorithm implementation for solving Electric Capacitated Vehicle Routing Problem (E-CVRP).
 
-- Our algorithm B-LAHC is evaluated on a widely used benchmark suite developed for the IEEE WCCI-2020 Competition on Evolutionary Computation for the EVRP. [Link](https://mavrovouniotis.github.io/EVRPcompetition2020/)
+- Our algorithm b-LAHC is evaluated on a widely used benchmark suite developed for the IEEE WCCI-2020 Competition on Evolutionary Computation for the EVRP. [Link](https://mavrovouniotis.github.io/EVRPcompetition2020/)
 
 - Paper:
 
@@ -184,6 +184,10 @@
 ## Experiments
 
 - Pearson coefficient
+- Comparison with state-of-the-art algorithms
+- Ablation study of acceleration strategies
+- Parameter sensitivity study
+- Role of M8 move operator
 
 
 
