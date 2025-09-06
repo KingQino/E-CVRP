@@ -183,11 +183,23 @@
 
 ## Experiments
 
-- Pearson coefficient
-- Comparison with state-of-the-art algorithms
-- Ablation study of acceleration strategies
-- Parameter sensitivity study
-- Role of M8 move operator
+> All experimental data generated in this study are publicly available via the [Globus link](https://app.globus.org/file-manager?origin_id=8581615c-a264-4327-a9d7-28b8c027f005&origin_path=%2F). 
+>
+> Globus is a widely adopted research data management platform that enables high-speed, reliable, and secure file transfers. Users affiliated with most universities and research institutions in the **United States**, **United Kingdom**, and **Europe** can typically log in directly using their institutional credentials via **single sign-on (SSO)**.
+>
+> For users whose institutions are not integrated with Globus, it is still possible to **register a free Globus ID** at [https://www.globus.org](https://www.globus.org?utm_source=chatgpt.com) and access the dataset without restrictions. Since the dataset is **publicly shared**, no special authorisation is required.
+>
+> ------
+
+- Experimental data including:
+
+  - Coefficient
+
+  - Comparison with state-of-the-art algorithms
+
+  - Ablation study on key components
+
+  - Sensitivity Analysis of Hyperparameters
 
 
 
@@ -330,8 +342,7 @@
 
 ## Licence
 
-[![Licence](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](http://badges.mit-license.org)
+[![Licence](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](https://yinghao.mit-license.org/license.html)
 
-- **[MIT licence](http://opensource.org/licenses/mit-license.php)**
-- [MIT license application](https://github.com/remy/mit-license?tab=readme-ov-file#browse-custom-themes)
+- **[MIT licence](https://yinghao.mit-license.org/license.html)**
 - Copyright(c) 2025 Yinghao Qin
