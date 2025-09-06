@@ -33,7 +33,7 @@ public:
 
     }
 
-    virtual void run() = 0;
+    virtual double run() = 0;
     virtual void initialize_heuristic() = 0;
     virtual void run_heuristic() = 0;
     [[nodiscard]] virtual bool stop_criteria_max_evals() const {

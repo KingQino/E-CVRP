@@ -41,7 +41,7 @@ public:
 
     Lahc(int seed, Case *instance, Preprocessor* preprocessor);
     ~Lahc() override;
-    void run() override;
+    double run() override;
     void initialize_heuristic() override;
     void run_heuristic() override;
     void open_log_for_evolution() override;

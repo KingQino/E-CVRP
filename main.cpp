@@ -26,12 +26,12 @@ void run_algorithm(const int run, const Parameters* params, vector<double>& perf
     switch (params->algorithm) {
         case Algorithm::LAHC: {
             const auto lahc = new Lahc(run, instance, preprocessor);
-            lahc->run();
+            const double final_cost = lahc->run();  // 先计算，后记录
 
             // Prevent race condition on shared vector
             #pragma omp critical
             {
-                perf_of_trials[run - 1] = lahc->global_best->lower_cost;
+                perf_of_trials[run - 1] = final_cost;
             }
 
             delete lahc;

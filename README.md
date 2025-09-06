@@ -2,7 +2,7 @@
 
 - This project contains a specific algorithm implementation for solving Electric Capacitated Vehicle Routing Problem (E-CVRP).
 
-- Our algorithm B-LAHC is evaluated on a widely used benchmark suite developed for the IEEE WCCI-2020 Competition on Evolutionary Computation for the EVRP. [Link](https://mavrovouniotis.github.io/EVRPcompetition2020/)
+- Our algorithm b-LAHC is evaluated on a widely used benchmark suite developed for the IEEE WCCI-2020 Competition on Evolutionary Computation for the EVRP. [Link](https://mavrovouniotis.github.io/EVRPcompetition2020/)
 
 - Paper:
 
@@ -183,12 +183,89 @@
 
 ## Experiments
 
-- Pearson coefficient
+> All experimental data generated in this study are publicly available via the [Globus link](https://app.globus.org/file-manager?origin_id=8581615c-a264-4327-a9d7-28b8c027f005&origin_path=%2F). 
+>
+> Globus is a widely adopted research data management platform that enables high-speed, reliable, and secure file transfers. Users affiliated with most universities and research institutions in the **United States**, **United Kingdom**, and **Europe** can typically log in directly using their institutional credentials via **single sign-on (SSO)**.
+>
+> For users whose institutions are not integrated with Globus, it is still possible to **register a free Globus ID** at [https://www.globus.org](https://www.globus.org?utm_source=chatgpt.com) and access the dataset without restrictions. Since the dataset is **publicly shared**, no special authorisation is required.
+>
+> ------
+
+- Experimental data including:
+
+  - Coefficient
+
+  - Comparison with state-of-the-art algorithms
+
+  - Ablation study on key components
+
+  - Sensitivity Analysis of Hyperparameters
 
 
 
 ## Script
 
+- Update statistical results - `./stats/[Algorithm]/update_all_stats.sh`
+
+  ```sh
+  #!/bin/bash
+  
+  # Find all instance directories (e.g., E-n101-k8, X-n819-k171)
+  INSTANCES=$(ls -d X-n* E-n* 2>/dev/null)
+  
+  for INSTANCE in $INSTANCES; do
+      # Skip if not a directory
+      [ ! -d "$INSTANCE" ] && continue
+  
+      echo "Processing instance: $INSTANCE"
+  
+      # Define stats file path
+      STATS_FILE="$INSTANCE/stats.$INSTANCE.evrp"
+      
+      # Clear/create stats file
+      > "$STATS_FILE"
+  
+      # Process each run directory (1-10)
+      for RUN in {1..10}; do
+          SOLUTION_FILE="$INSTANCE/$RUN/solution.$INSTANCE.txt"
+          
+          if [ -f "$SOLUTION_FILE" ]; then
+              # Extract first line, round to 2 decimals
+              VALUE=$(head -n 1 "$SOLUTION_FILE" | awk '{printf "%.2f", $1}')
+              echo "$VALUE" >> "$STATS_FILE"
+          else
+              echo "Warning: $SOLUTION_FILE not found!" >&2
+          fi
+      done
+  
+      # Compute statistics only if we have data
+      if [ -s "$STATS_FILE" ]; then
+          awk '
+              {
+                  sum += $1;
+                  sumsq += ($1)^2;
+                  if (NR == 1 || $1 < min) min = $1;
+                  if (NR == 1 || $1 > max) max = $1;
+              }
+              END {
+                  mean = sum / NR;
+                  variance = (sumsq - sum^2 / NR) / NR;
+                  # Handle case when all values are identical (variance ~0)
+                  stddev = (variance < 0 ? 0 : sqrt(variance));
+                  printf "Mean: %.2f\t\tStd Dev: %.2f\n", mean, stddev;
+                  printf "Min : %.2f\n", min;
+                  printf "Max : %.2f\n", max;
+              }
+          ' "$STATS_FILE" >> "$STATS_FILE"
+          echo "Updated stats: $STATS_FILE"
+      else
+          echo "Error: No valid data found for $INSTANCE" >&2
+      fi
+  done
+  
+  echo "All instances processed."
+  ```
+  
 - Experiemental results collection - `./stats/[Algorithm]/objective.sh`
 
   ```sh
@@ -265,8 +342,7 @@
 
 ## Licence
 
-[![Licence](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](http://badges.mit-license.org)
+[![Licence](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](https://yinghao.mit-license.org/license.html)
 
-- **[MIT licence](http://opensource.org/licenses/mit-license.php)**
-- [MIT license application](https://github.com/remy/mit-license?tab=readme-ov-file#browse-custom-themes)
+- **[MIT licence](https://yinghao.mit-license.org/license.html)**
 - Copyright(c) 2025 Yinghao Qin

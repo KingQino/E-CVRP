@@ -49,7 +49,9 @@ void Lahc::initialize_heuristic() {
         history_list[i] = current->upper_cost * history_noise(random_engine);
     }
     follower->run(current);
-    *global_best = *current;
+    if (current->lower_cost < global_best->lower_cost) {
+        *global_best = *current;
+    }
 
     this->best_upper_cost = std::min(best_upper_cost,current->upper_cost);
 
@@ -107,7 +109,7 @@ void Lahc::run_heuristic() {
     ++restart_idx;
 }
 
-void Lahc::run() {
+double Lahc::run() {
     // Initialize time variables
     start = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration<double>::zero();
@@ -145,6 +147,8 @@ void Lahc::run() {
         close_log_for_evolution();  // Close log if logging is enabled
         save_log_for_solution();    // Save the log if logging is enabled
     }
+
+    return global_best->lower_cost;
 }
 
 void Lahc::open_log_for_evolution() {
@@ -203,7 +207,6 @@ void Lahc::save_log_for_solution() {
 
     log_solution.open(directory / file_name);
     log_solution << fixed << setprecision(5) << global_best->lower_cost << endl;
-    follower->run(global_best.get());
     for (int i = 0; i < follower->num_routes; ++i) {
         for (int j = 0; j < follower->lower_num_nodes_per_route[i]; ++j) {
             log_solution << follower->lower_routes[i][j] << ",";
