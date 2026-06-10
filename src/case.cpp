@@ -5,10 +5,11 @@
 #include "case.hpp"
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 
 namespace fs = std::filesystem;
 
-Case::Case(const string& kDataPath, const string& file_name) {
+Case::Case(const std::string& kDataPath, const std::string& file_name) {
     this->file_name_ = file_name;
     this->instance_name_ = file_name.substr(0, file_name.find('.'));
 
@@ -62,8 +63,7 @@ void Case::read_problem(const std::filesystem::path& file_path) {
 
     std::ifstream infile(file_path);
     if (!infile.is_open()) {
-        std::cerr << "Failed to open file: " << file_path << std::endl;
-        exit(EXIT_FAILURE);
+        throw std::runtime_error("Failed to open file: " + file_path.string());
     }
 
     std::string line;
@@ -124,7 +124,8 @@ void Case::read_problem(const std::filesystem::path& file_path) {
     }
 
     // === 4. POSITIONS_: depot + customer + stations ===
-    this->problem_size_ = static_cast<int>(demand_.size()) + num_station_;
+    this->problem_size_ = num_depot_ + num_customer_ + num_station_;
+    this->eval_increment_ = (this->problem_size_ > 0) ? 1.0 / static_cast<double>(this->problem_size_) : 0.0;
     positions_.resize(problem_size_, {0, 0});
 
     // Go back to read NODE_COORD_SECTION
@@ -150,8 +151,11 @@ void Case::read_problem(const std::filesystem::path& file_path) {
     // === 5. initialise distance matrix  ===
     this->distances_ = generate_2D_matrix_double(problem_size_, problem_size_);
     for (int i = 0; i < problem_size_; ++i) {
-        for (int j = 0; j < problem_size_; ++j) {
-            distances_[i][j] = euclidean_distance(i, j);
+        distances_[i][i] = 0.0;
+        for (int j = i + 1; j < problem_size_; ++j) {
+            const double d = euclidean_distance(i, j);
+            distances_[i][j] = d;
+            distances_[j][i] = d;
         }
     }
 }
@@ -161,7 +165,7 @@ double **Case::generate_2D_matrix_double(const int n, const int m) {
     for (int i = 0; i < n; i++) {
         matrix[i] = new double[m];
     }
-    //initialise the 2-d array
+    //initialize the 2-d array
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < m; j++) {
             matrix[i][j] = 0.0;
@@ -171,27 +175,12 @@ double **Case::generate_2D_matrix_double(const int n, const int m) {
 }
 
 double Case::euclidean_distance(const int i, const int j) const {
-    return sqrt(pow(positions_[i].first - positions_[j].first, 2) +
-                pow(positions_[i].second - positions_[j].second, 2));
+    const double dx = positions_[i].first - positions_[j].first;
+    const double dy = positions_[i].second - positions_[j].second;
+    return std::sqrt(dx * dx + dy * dy);
 }
 
-int Case::get_customer_demand_(const int customer) const {
-    return demand_[customer];
-}
-
-double Case::get_distance(const int from, const int to) {
-    //adds partial evaluation to the overall fitness evaluation count
-    //It can be used when local search is used and a whole evaluation is not necessary
-    evals_ += 1.0 / problem_size_;
-
-    return distances_[from][to];
-}
-
-double Case::get_evals() const {
-    return evals_;
-}
-
-double Case::calculate_total_dist(const vector<vector<int>>& chromR) const {
+double Case::calculate_total_dist(const std::vector<std::vector<int>>& chromR) const {
     double tour_length = 0.0;
 
     for (const auto& route : chromR) {
@@ -218,7 +207,7 @@ double Case::calculate_total_dist_follower(int **routes, const int num_routes, c
     return tour_length;
 }
 
-int Case::calculate_demand_sum(const vector<int> &route) const {
+int Case::calculate_demand_sum(const std::vector<int>& route) const {
     int demand_sum = 0;
     for(const auto node : route) {
         demand_sum += demand_[node];
@@ -227,7 +216,7 @@ int Case::calculate_demand_sum(const vector<int> &route) const {
     return demand_sum;
 }
 
-double Case::compute_total_distance(const vector<vector<int>> &routes) {
+double Case::compute_total_distance(const std::vector<std::vector<int>>& routes) {
     double tour_length = 0.0;
     for (auto& route : routes) {
         for (int j = 0; j < route.size() - 1; ++j) {
@@ -240,7 +229,7 @@ double Case::compute_total_distance(const vector<vector<int>> &routes) {
     return tour_length;
 }
 
-double Case::compute_total_distance(const vector<int> &route) const {
+double Case::compute_total_distance(const std::vector<int>& route) const {
     double tour_length = 0.0;
     for (int j = 0; j < route.size() - 1; ++j) {
         tour_length += distances_[route[j]][route[j + 1]];
@@ -249,8 +238,8 @@ double Case::compute_total_distance(const vector<int> &route) const {
     return tour_length;
 }
 
-vector<int> Case::compute_demand_sum_per_route(const vector<vector<int>> &routes) const {
-    vector<int> demand_sum_per_route;
+std::vector<int> Case::compute_demand_sum_per_route(const std::vector<std::vector<int>>& routes) const {
+    std::vector<int> demand_sum_per_route;
     for (auto & route : routes) {
         int temp = 0;
         for (const int node : route) {
@@ -259,16 +248,11 @@ vector<int> Case::compute_demand_sum_per_route(const vector<vector<int>> &routes
         demand_sum_per_route.push_back(temp);
     }
 
-    return std::move(demand_sum_per_route);
+    return demand_sum_per_route;
 }
 
 bool Case::is_charging_station(const int node) const {
-    bool flag;
-    if (node == depot_ || ( node >= num_depot_ + num_customer_ && node < problem_size_))
-        flag = true;
-    else
-        flag = false;
-    return flag;
+    return node == depot_ || (node >= num_depot_ + num_customer_ && node < problem_size_);
 }
 
 std::ostream& operator<<(std::ostream& os, const Case& c) {

@@ -18,7 +18,6 @@
 #include <numeric>
 
 namespace fs = std::filesystem;
-using namespace std;
 
 struct Indicators {
     double min{};

@@ -2,9 +2,13 @@
 /cmake-build-debug/
 /cmake-build-release/
 /cmake-build-debug-llvm/
+/cmake-build-default-llvm/
 .DS_Store
 stats
 experiments
+external/googletest/
+/build-debug/
+/build/
 
 # Prerequisites
 *.d

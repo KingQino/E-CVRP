@@ -4,6 +4,24 @@
 
 #include "initializer.hpp"
 
+#include <algorithm>
+#include <limits>
+
+using namespace std;
+
+namespace {
+
+struct GreedySeedPriority {
+    int customer;
+    double priority;
+
+    bool operator<(const GreedySeedPriority& other) const {
+        return priority > other.priority;
+    }
+};
+
+} // namespace
+
 Initializer::Initializer(std::mt19937& engine, Case *instance, Preprocessor *preprocessor)
     : instance(instance), preprocessor(preprocessor), random_engine(engine) {
 
@@ -210,6 +228,105 @@ vector<vector<int>> Initializer::routes_constructor_with_split() {
     return all_routes;
 }
 
+vector<vector<int>> Initializer::routes_constructor_with_greedy_seq(const bool random_seed_customers) const {
+    vector<int> unassigned(preprocessor->customer_ids_);
+    vector<char> is_unassigned(instance->problem_size_, 0);
+    for (const int customer : unassigned) {
+        is_unassigned[customer] = 1;
+    }
+
+    vector<GreedySeedPriority> seed_order;
+    seed_order.reserve(unassigned.size());
+    for (const int customer : unassigned) {
+        const double priority = random_seed_customers
+            ? std::uniform_real_distribution<>(0.0, 10.0)(random_engine)
+            : instance->euclidean_distance(instance->depot_, customer) + instance->euclidean_distance(customer, instance->depot_);
+        seed_order.push_back({customer, priority});
+    }
+    std::sort(seed_order.begin(), seed_order.end());
+
+    auto erase_unassigned = [&](const int customer) {
+        is_unassigned[customer] = 0;
+        unassigned.erase(std::remove(unassigned.begin(), unassigned.end(), customer), unassigned.end());
+    };
+
+    auto select_next_seed = [&]() {
+        for (const auto& item : seed_order) {
+            if (is_unassigned[item.customer]) {
+                return item.customer;
+            }
+        }
+        return -1;
+    };
+
+    auto best_insertion_for_route = [&](const vector<int>& route, const int customer, int& best_pos, double& best_delta) {
+        best_pos = -1;
+        best_delta = std::numeric_limits<double>::max();
+        for (int pos = 1; pos < static_cast<int>(route.size()); ++pos) {
+            const int prev = route[pos - 1];
+            const int next = route[pos];
+            const double delta = instance->get_distance(prev, customer) +
+                                 instance->get_distance(customer, next) -
+                                 instance->get_distance(prev, next);
+            if (delta < best_delta) {
+                best_delta = delta;
+                best_pos = pos;
+            }
+        }
+        return best_pos != -1;
+    };
+
+    vector<vector<int>> routes;
+    routes.reserve(std::min(instance->num_customer_, preprocessor->route_cap_));
+
+    while (!unassigned.empty()) {
+        const int seed_customer = select_next_seed();
+        if (seed_customer < 0) {
+            break;
+        }
+
+        vector<int> route = {instance->depot_, seed_customer, instance->depot_};
+        int route_load = instance->get_customer_demand_(seed_customer);
+        erase_unassigned(seed_customer);
+
+        while (!unassigned.empty()) {
+            int best_customer = -1;
+            int best_pos = -1;
+            double best_delta = std::numeric_limits<double>::max();
+
+            for (const int customer : unassigned) {
+                if (route_load + instance->get_customer_demand_(customer) > instance->max_vehicle_capa_) {
+                    continue;
+                }
+
+                int insert_pos = -1;
+                double route_delta = std::numeric_limits<double>::max();
+                if (!best_insertion_for_route(route, customer, insert_pos, route_delta)) {
+                    continue;
+                }
+
+                if (route_delta < best_delta) {
+                    best_delta = route_delta;
+                    best_pos = insert_pos;
+                    best_customer = customer;
+                }
+            }
+
+            if (best_customer < 0) {
+                break;
+            }
+
+            route.insert(route.begin() + best_pos, best_customer);
+            route_load += instance->get_customer_demand_(best_customer);
+            erase_unassigned(best_customer);
+        }
+
+        routes.push_back(std::move(route));
+    }
+
+    return routes;
+}
+
 vector<vector<int>> Initializer::routes_constructor_with_hien_method() const{
     vector<vector<int>> routes = hien_clustering();
     hien_balancing(routes);
@@ -219,7 +336,7 @@ vector<vector<int>> Initializer::routes_constructor_with_hien_method() const{
         route.push_back(instance->depot_);
     }
 
-    return std::move(routes);
+    return routes;
 }
 
 // Jia Ya-Hui, et al., "Confidence-Based Ant Colony Optimization for Capacitated Electric Vehicle Routing Problem With Comparison of Different Encoding Schemes", 2022

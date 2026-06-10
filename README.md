@@ -2,14 +2,21 @@
 
 - This project contains a specific algorithm implementation for solving Electric Capacitated Vehicle Routing Problem (E-CVRP).
 
-- Our algorithm b-LAHC is evaluated on a widely used benchmark suite developed for the IEEE WCCI-2020 Competition on Evolutionary Computation for the EVRP. [Link](https://mavrovouniotis.github.io/EVRPcompetition2020/)
-
 - Paper:
 
-  > Our paper.
+  ```bibtex
+  @article{qin2026bilevel,
+    title={Bilevel Late Acceptance Hill Climbing for the Electric Capacitated Vehicle Routing Problem},
+    author={Qin, Yinghao and Bazargani, Mosab and Burke, Edmund K and Coello, Carlos A Coello and Song, Zhongmin and Chen, Jun},
+    journal={arXiv preprint arXiv:2604.13013},
+    year={2026}
+  }
+  ```
+
+  
 
 - **Table of Contents**
-  
+
   1. [Usage](#Usage)
   2. [Architecture](#Architecture)
   3. [Algorithms](#Algorithms)
@@ -23,10 +30,10 @@
 
 1. Requirement
 
-   - Compiler: GCC ≥ 7 or Clang ≥ 5 (C++17 support required)
-   - Build tool: CMake ≥ 3.15
-   - Dependency: OpenMP (for multithreading)
-   - Optional: GoogleTest (for Debug mode testing)
+  - Compiler: GCC ≥ 7 or Clang ≥ 5 (C++17 support required)
+  - Build tool: CMake ≥ 3.15
+  - Dependency: OpenMP (for multithreading)
+  - Optional: GoogleTest (for Debug mode testing)
 
 2. Compile
 
@@ -39,7 +46,7 @@
 3. Run
 
    ```shell
-   ./Run -alg lahc -ins E-n22-k4.evrp -log 1 -stp 0 -mth 1 -his_len 5723 -max_attempts 60 -low_margin 1.01 -noise_lb 0.95 -noise_ub 1.05
+   ./Run -alg twostagealns -ins E-n22-k4.evrp -log 1 -stp 0 -mth 1 -alns_start_dev 0.0167 -alns_decay 0.99 -alns_repair_bias 1.5
    ```
 
    Parameters Instruction
@@ -48,18 +55,29 @@
    /* ===============================================================================*/
    Usage: ./Run [options]
    Options:
-     -alg [enum]            : Algorithm name (e.g., Lahc)
+     -alg [enum]            : Algorithm name (`Lahc` or `TwoStageAlns`)
      -ins [filename]        : Problem instance filename
      -log [0|1]             : Enable logging (default: 0)
      -stp [0|1]             : Stopping criteria, 0: max-evals, 1: max-time (default: 0)
      -mth [0|1]             : Enable multi-threading (default: 1)
      -exp [0|1]             : Activate experimental mode (default: 0)
      -seed [int]            : Random seed (default: 0)
-     -his_len [int]         : LAHC history length (default: 5000)
-     -max_attempts [int]    : max attempts (default: 25)
-     -low_margin [double]   : margin is the best upper cost for lower optimisation, >= 1.0 (default: 1.10)
+     -his_len [int]         : LAHC history length (default: 5723)
+     -max_attempts [int]    : max attempts (default: 60)
+     -low_margin [double]   : margin is the best upper cost for lower optimisation, >= 1.0 (default: 1.05)
      -noise_lb [double]     : lower bound of noise range for history list value (default: 0.95)
      -noise_ub [double]     : upper bound of noise range for history list value (default: 1.05)
+     -alns_start_dev [double] : TwoStageAlns initial record-deviation gap (default: 0.0167)
+     -alns_decay [double]  : TwoStageAlns adaptive-weight decay (default: 0.99)
+     -alns_score_acc [double] : TwoStageAlns score for accepted solutions (default: 2.0)
+     -alns_score_imp [double] : TwoStageAlns score for improving solutions (default: 4.0)
+     -alns_score_best [double] : TwoStageAlns score for new best upper solutions (default: 10.0)
+     -alns_min_destroy_ratio [double] : TwoStageAlns minimum relative destroy size (default: 0.10)
+     -alns_max_destroy_ratio [double] : TwoStageAlns maximum relative destroy size (default: 0.40)
+     -alns_min_destroy_abs [int] : TwoStageAlns minimum absolute destroy size (default: 5)
+     -alns_max_destroy_abs [int] : TwoStageAlns maximum absolute destroy size (default: 150)
+     -alns_geo_bias [double] : TwoStageAlns geo destroy bias (default: 5.0)
+     -alns_repair_bias [double] : TwoStageAlns randomized regret factor (default: 1.5)
    /* ===============================================================================*/
    ```
 
@@ -93,7 +111,7 @@
   - `Case`: Stores **raw E-CVRP instance data**
   - `Preprocessor`: Computes **preprocessed data**, used in the optimisation process
   - `Individual`: Stores solutions (routes for vehicles)
-  - `PartialSolution`: Stores partial solutions. This structure is specifically designed to coordinate the leader and follower, to avoid pass the whole solution (too expensive)
+  - `PartialSolution`: Stores partial solutions. This structure is designed to coordinate the leader and follower without passing a whole solution.
   - `CommandLine`: Parses **runtime parameters** (e.g., `-alg lahc`, `-ins E-n22-k4.evrp`, `-log 1`, `-his_len 5000`).
   - `Parameters`: parse arguments from command line to the parameters.
 - Optimisation Layer
@@ -101,11 +119,13 @@
   - `Initializer`: Solution initialisation methods, split method for splitting the chromosome into multiple routes
 
   - `Leader`: Optimizes **route structures**, ensuring **vehicle capacity feasibility** but **ignores charging decisions**
+    - `LeaderSingle`: Single-operator neighbourhood exploration
   - `Follower`: Makes **charging decisions**, ensuring **route feasibility for electric vehicles** while maintaining the given path.
 - Heuristic Algorithm Layer
 
-  - `HeuristicInterface`: Abstract class defining the structure for **heuristic algorithms**, it holds the unified __stop critria__ for the algorithms. 
+  - `HeuristicInterface`: Abstract class defining the structure for **heuristic algorithms**, including unified stopping criteria.
   - `Lahc`: Bilevel late acceptance hill climbing
+  - `TwoStageAlns`: Two-stage upper-level ALNS with final lower-level charging refinement
 - Statistical Analysis Layer
 
   - `StatsInterface`: Provides methods for **tracking algorithm performance**, recording iteration details, and analyzing convergence.
@@ -120,10 +140,10 @@
   >
   > - `Initializer` => using solution constructor
   >
-  > - `Leader` => using function `load_solution` and `export_solution`, and all upper-level optimisation are compeleted in the `leader`
+  > - `Leader` => uses `load_individual` and `export_individual`; upper-level optimisation is completed in the `leader`
   >
-  > - `Follower` => using function `load_solution` and `export_solution`, and all upper-level optimisation are compeleted in the `follower`
-  >   - lower_cost
+  > - `Follower` => uses `load_individual` and `export_individual`; lower-level optimisation is completed in the `follower`
+      >   - lower_cost
 
 - how to make moves (<u>upper-level optimisation</u>) and update the current solution?
 
@@ -133,7 +153,7 @@
 - how to make the <u>lower-level optimisation</u>?
 
   - In `Follower`, load `solution`/`Individual` to its data structure, then optimising. In the end, the updated cost is exported to the `Individual`.
-  - To output the final result, we just need to make the lower-level optimisation to the `Solution` upper-level solution again, and then we can get the exactly same solution. 
+  - To output the final result, we just need to make the lower-level optimisation to the `Solution` upper-level solution again, and then we can get the exactly same solution.
 
 
 
@@ -141,41 +161,49 @@
 
 ### Stop Criteria
 
-- Max Evals (suggested in the IEEE WCCI 2020 benchmark): 
-  
+- Max Evals (suggested in the IEEE WCCI 2020 benchmark):
+
   ​								![Max Evals](https://latex.codecogs.com/svg.image?\text{Max%20Evals}%20=%2025{,}000%20\times%20pz)
-  
+
   where _pz_ is the number of depot, customers and charging stations. Each complete evaluation has a time complexity of O(n<sup>2</sup>). Notably, each access to an arc weight _d<sub>ij</sub>_ consumes a fraction _1/pz_ of the budget, meaning that every neighbourhood move contributes to the overall evaluation count.
 
 - Max Time (introduced by Ya-Hui et al.):
-  
+
   ​								![Max Time Formula](https://latex.codecogs.com/svg.image?\text{Max%20Time}%20=%20v%20\cdot%20\frac{|V_c|%20+%20|V_f|}{100}%20\quad%20\text{(hours)})
-  
+
   where the parameter _v_ is set to 1, 2, and 3 for instance groups E22–E101, X143–X916, and X1001 respectively.
 
 ### Overview of Methods on the WCCI-2020 EVRP Benchmark
 
 | Methods  | Stop Criteria | Language/Tool | Code Available |
-| -------- | ------------- | ------------- | -------------- |
-| MILP     | Max Evals     | Gurobi        | --             |
-| VNS      | Max Evals     | C++           | Yes            |
-| SA       | Max Evals     | C++           | No             |
-| GA       | Max Evals     | C++           | Yes            |
-| HHASA-TS | Max Evals     | MATLAB        | Yes            |
-| BACO     | Max Time      | C++           | Yes            |
-| CBACO-I  | Max Time      | C++           | Yes            |
-| TAMLS    | Max Time      | C++           | No             |
-| CBMA     | Max Time      | C++           | Yes            |
-| B-LAHC   | Both          | C++           | Yes            |
+|----------|---------------|--------------|----------------|
+| MILP     | Max Evals     | Gurobi       | No             |
+| VNS      | Max Evals     | C++          | Yes            |
+| SA       | Max Evals     | C++          | No             |
+| GA       | Max Evals     | C++          | Yes            |
+| HHASA-TS | Max Evals     | MATLAB       | Yes            |
+| BACO     | Max Time      | C++          | Yes            |
+| CBACO-I  | Max Time      | C++          | Yes            |
+| TAMLS    | Max Time      | C++          | No             |
+| CBMA     | Max Time      | C++          | Yes            |
+| B-LAHC   | Both          | C++          | Yes            |
 
 - MILP: [technical report](https://mavrovouniotis.github.io/EVRPcompetition2020/)
-- VNS: [original code](https://github.com/wolledav/VNS-EVRP-2020), [modified code](https://github.com/KingQino/VNS-EVRP-2020/tree/broker)
+
+- VNS: [original code](https://github.com/wolledav/VNS-EVRP-2020), [modified code](https://github.com/KingQino/VNS-EVRP-2020)
+
 - GA: [paper](https://www.researchgate.net/profile/Cong-Dao-Tran/publication/360604653_A_greedy_search_based_evolutionary_algorithm_for_electric_vehicle_routing_problem/links/641d203a315dfb4ccea54309/A-greedy-search-based-evolutionary-algorithm-for-electric-vehicle-routing-problem.pdf), [original code](https://github.com/NeiH4207/EVRP), [modified code](https://github.com/KingQino/HMAGS-Hien)
-- HHASA-TS: [paper](https://www.sciencedirect.com/science/article/pii/S0957417424010637), [code](https://github.com/erickre12/HHASARL.git)
+
+- HHASA-TS: [paper](https://www.sciencedirect.com/science/article/pii/S0957417424010637), [original code](https://github.com/erickre12/HHASARL.git), [modified code](https://github.com/KingQino/HHASARL/tree/main)
+
 - BACO: [paper](https://ieeexplore.ieee.org/document/9409782), [original code](https://github.com/Flyki/CEVRP), [modified code](https://github.com/KingQino/CBACO-Yahui/)
+
 - CBACO-I: [paper](https://ieeexplore.ieee.org/document/9684529), [original code](https://github.com/Flyki/CEVRP), [modified code](https://github.com/KingQino/CBACO-Yahui/)
+
 - TAMLS: [paper](https://ieeexplore.ieee.org/document/10382457)
+
 - CBMA: [paper](https://ieeexplore.ieee.org/abstract/document/10611804), [code](https://github.com/KingQino/CEVRP-with-Adaptive-Selection)
+
 
 *The modified code* includes my modifications on the original version, including (1) uniform stopping criteria, and (2) enhanced statistical logging.
 
@@ -183,7 +211,7 @@
 
 ## Experiments
 
-> All experimental data generated in this study are publicly available via the [Globus link](https://app.globus.org/file-manager?origin_id=8581615c-a264-4327-a9d7-28b8c027f005&origin_path=%2F). 
+> All experimental data generated in this study are publicly available via the [Globus link](https://app.globus.org/file-manager?origin_id=8581615c-a264-4327-a9d7-28b8c027f005&origin_path=%2F).
 >
 > Globus is a widely adopted research data management platform that enables high-speed, reliable, and secure file transfers. Users affiliated with most universities and research institutions in the **United States**, **United Kingdom**, and **Europe** can typically log in directly using their institutional credentials via **single sign-on (SSO)**.
 >
@@ -193,17 +221,20 @@
 
 - Experimental data including:
 
-  - Coefficient
-
-  - Comparison with state-of-the-art algorithms
-
+  - Correlation vs. Misalignment: Validating ϕ(x) as a Surrogate Objective
+  - Comparison with state-of-the-art algorithms (max-evals, max-time)
   - Ablation study on key components
-
   - Sensitivity Analysis of Hyperparameters
 
 
 
 ## Script
+
+- Benchmark runs
+
+  - Max-evals benchmark: `./stats/[Algorithm]/benchmark_max_evals.sh`
+  - Max-time benchmark: `./stats/[Algorithm]/benchmark_max_time.sh`
+  - Supported algorithm folders: `LAHC`, `TWOSTAGEALNS`
 
 - Update statistical results - `./stats/[Algorithm]/update_all_stats.sh`
 
@@ -249,7 +280,11 @@
               }
               END {
                   mean = sum / NR;
-                  variance = (sumsq - sum^2 / NR) / NR;
+                  if (NR > 1) {
+                      variance = (sumsq - sum^2 / NR) / (NR - 1);
+                  } else {
+                      variance = 0;
+                  } 
                   # Handle case when all values are identical (variance ~0)
                   stddev = (variance < 0 ? 0 : sqrt(variance));
                   printf "Mean: %.2f\t\tStd Dev: %.2f\n", mean, stddev;
@@ -265,8 +300,8 @@
   
   echo "All instances processed."
   ```
-  
-- Experiemental results collection - `./stats/[Algorithm]/objective.sh`
+
+- Experimental results collection - `./stats/[Algorithm]/objective.sh`
 
   ```sh
   #!/bin/bash
@@ -338,7 +373,13 @@
   rm -f "$output_file"
   ```
 
-  
+- Per-run logs
+
+  - Evolution trace: `stats/[Algorithm]/[Instance]/[Seed]/evols.[Instance].csv`
+  - Final solution: `stats/[Algorithm]/[Instance]/[Seed]/solution.[Instance].txt`
+  - Lightweight profile: `stats/[Algorithm]/[Instance]/[Seed]/profile.[Instance].txt`
+
+
 
 ## Licence
 

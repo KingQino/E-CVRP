@@ -3,6 +3,8 @@
 //
 
 #include "individual.hpp"
+#include <cassert>
+#include <limits>
 #include <random>
 
 PartialSolution::PartialSolution() {
@@ -69,7 +71,7 @@ std::ostream &operator<<(std::ostream &os, const PartialSolution &partial_sol) {
 
 
 Individual::Individual() {
-    this->lower_cost = numeric_limits<double>::max();
+    this->lower_cost = std::numeric_limits<double>::max();
     this->route_cap = 0;  // Fix: Initialize route_cap to avoid undefined behavior
     this->routes = nullptr;
 }
@@ -83,6 +85,7 @@ Individual::Individual(const Individual &ind) {
     this->num_routes = ind.num_routes;
     this->upper_cost = ind.upper_cost;
     this->lower_cost = ind.lower_cost;
+    this->biased_fitness = ind.biased_fitness;
     this->routes = new int *[ind.route_cap];
     for (int i = 0; i < ind.route_cap; ++i) {
         this->routes[i] = new int[ind.node_cap];
@@ -111,23 +114,13 @@ Individual::Individual(Case* instance, Preprocessor *preprocessor) {
     memset(this->demand_sum_per_route, 0, sizeof(int) * route_cap);
     this->num_routes = 0;
     this->upper_cost = 0.;
-    this->lower_cost = numeric_limits<double>::max();
+    this->lower_cost = std::numeric_limits<double>::max();
 }
 
-Individual::Individual(Case* instance, Preprocessor* preprocessor, const vector<vector<int>>& routes,
-    const double upper_cost, const vector<int>& demand_sum_per_route)
+Individual::Individual(Case* instance, Preprocessor* preprocessor, const std::vector<std::vector<int>>& routes,
+    const double upper_cost, const std::vector<int>& demand_sum_per_route)
 : Individual(instance, preprocessor) {
-    this->upper_cost = upper_cost;
-    this->num_routes = static_cast<int>(routes.size());
-    for (int i = 0; i < this->num_routes; ++i) {
-        this->num_nodes_per_route[i] = static_cast<int>(routes[i].size());
-        memcpy(this->routes[i], routes[i].data(), sizeof(int) * this->num_nodes_per_route[i]);
-    }
-    for (int i = 0; i < demand_sum_per_route.size(); ++i) {
-        this->demand_sum_per_route[i] = demand_sum_per_route[i];
-    }
-
-    this->lower_cost = numeric_limits<double>::max();
+    load_routes(routes, upper_cost, demand_sum_per_route);
 }
 
 Individual::~Individual() {
@@ -141,10 +134,13 @@ Individual::~Individual() {
 
 Individual& Individual::operator=(const Individual& other) {
     if (this == &other) return *this;
+    assert(route_cap == other.route_cap && "Individual assignment requires matching route capacity.");
+    assert(node_cap == other.node_cap && "Individual assignment requires matching node capacity.");
 
     this->num_routes = other.num_routes;
     this->upper_cost = other.upper_cost;
     this->lower_cost = other.lower_cost;
+    this->biased_fitness = other.biased_fitness;
     for (int i = 0; i < route_cap; ++i) {
         memcpy(this->routes[i], other.routes[i], sizeof(int) * node_cap);
     }
@@ -163,11 +159,13 @@ void Individual::clean() {
     memset(this->demand_sum_per_route, 0, sizeof(int) * route_cap);
     this->num_routes = 0;
     this->upper_cost = 0.;
-    this->lower_cost = 0.;
+    this->lower_cost = std::numeric_limits<double>::max();
 }
 
-void Individual::load_routes(const vector<vector<int>>& routes, const double upper_cost,
-    const vector<int>& demand_sum_per_route) {
+void Individual::load_routes(const std::vector<std::vector<int>>& routes, const double upper_cost,
+    const std::vector<int>& demand_sum_per_route) {
+    clean();
+
     this->upper_cost = upper_cost;
     this->num_routes = static_cast<int>(routes.size());
     for (int i = 0; i < this->num_routes; ++i) {
@@ -178,11 +176,11 @@ void Individual::load_routes(const vector<vector<int>>& routes, const double upp
         this->demand_sum_per_route[i] = demand_sum_per_route[i];
     }
 
-    this->lower_cost = numeric_limits<double>::max();
+    this->lower_cost = std::numeric_limits<double>::max();
 }
 
-vector<int> Individual::get_chromosome() const {
-    vector<int> chromosome; // num of customers
+std::vector<int> Individual::get_chromosome() const {
+    std::vector<int> chromosome; // num of customers
     chromosome.reserve(instance->num_customer_); // Preallocate memory for efficiency
     for (int i = 0; i < num_routes; ++i) {
         for (int j = 1; j < num_nodes_per_route[i] - 1; ++j) {

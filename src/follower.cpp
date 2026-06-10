@@ -3,9 +3,12 @@
 //
 
 #include "follower.hpp"
+#include <algorithm>
 #include <list>
 #include <stack>
 #include <cassert>
+
+using namespace std;
 
 Follower::Follower(Case* instance, Preprocessor* preprocessor) {
     this->instance = instance;
@@ -25,7 +28,7 @@ Follower::Follower(Case* instance, Preprocessor* preprocessor) {
     this->lower_num_nodes_per_route = new int [route_cap];
     memset(this->lower_num_nodes_per_route, 0, sizeof(int) * route_cap);
     this->lower_cost_per_route = new double [route_cap];
-    memset(this->lower_cost_per_route, 0.0, sizeof(double) * route_cap);
+    std::fill_n(this->lower_cost_per_route, route_cap, 0.0);
     this->lower_cost = 0;
 }
 
@@ -66,18 +69,9 @@ void Follower::release_temp_buffers() const {
     delete[] temp_accumulated_distance;
 }
 
-void Follower::clean() {
-    this->num_routes = 0;
-    this->lower_cost = 0.;
-    for (int i = 0; i < route_cap; ++i) {
-        memset(this->lower_routes[i], 0, sizeof(int) * node_cap);
-    }
-    memset(this->lower_num_nodes_per_route, 0, sizeof(int) * route_cap);
-    memset(this->lower_cost_per_route, 0.0, sizeof(double) * route_cap);
-}
-
 void Follower::run_for_single_route(const int route_idx) const {
     if (lower_num_nodes_per_route[route_idx] <= 2) {
+        lower_cost_per_route[route_idx] = 0.0;
         return;
     }
     const double cost_SE = insert_station_by_simple_enum( lower_routes[route_idx], lower_num_nodes_per_route[route_idx]);
@@ -173,14 +167,18 @@ void Follower::refine(Individual* ind) {
     lower_cost = 0.0;
     for (int i = 0; i < num_routes; ++i) {
         const double cost = insert_station_by_all_enumeration(lower_routes[i], lower_num_nodes_per_route[i]);
-        lower_cost_per_route[i] = cost;
-        lower_cost += cost;
+        lower_cost_per_route[i] = (cost < 0.0) ? INFEASIBLE : cost;
+        lower_cost += lower_cost_per_route[i];
     }
 
     export_individual(ind);
 }
 
-void Follower::run(Individual *ind) {
+// The `run_with_variables` method is theoretically equivalent to `run`, but the latter
+// doesn't require the follower to maintain intermediate variables (e.g., lower_routes) and thus
+// is more memory efficient. However, the `run_with_variables` method can directly keep all the variables
+// for logging output.
+void Follower::run_with_variables(Individual *ind) {
     load_individual(ind);
 
     for (int i = 0; i < num_routes; ++i) {
@@ -191,9 +189,35 @@ void Follower::run(Individual *ind) {
     export_individual(ind);
 }
 
-void Follower::load_individual(const Individual* ind) {
-    clean();
+void Follower::run(Individual* ind) {
+    this->num_routes = ind->num_routes;
 
+    for (int i = 0; i < num_routes; ++i) {
+        const int length = ind->num_nodes_per_route[i];
+        if (length <= 2) {
+            lower_cost_per_route[i] = 0.0;
+            continue;
+        }
+
+        const int* route = ind->routes[i];
+
+        const double cost_SE = eval_simple_enum_cost(route, length);
+        if (cost_SE < 0) {
+            const double cost_RE = eval_remove_enum_cost(route, length);
+            lower_cost_per_route[i] = (cost_RE < 0) ? INFEASIBLE : cost_RE;
+        } else {
+            lower_cost_per_route[i] = cost_SE;
+        }
+    }
+
+    lower_cost = std::accumulate(lower_cost_per_route,
+                                 lower_cost_per_route + num_routes,
+                                 0.0);
+
+    export_individual(ind);
+}
+
+void Follower::load_individual(const Individual* ind) {
     this->num_routes = ind->num_routes;
     for (int i = 0; i < num_routes; ++i) {
         this->lower_num_nodes_per_route[i] = ind->num_nodes_per_route[i];
@@ -204,6 +228,132 @@ void Follower::load_individual(const Individual* ind) {
 
 void Follower::export_individual(Individual* ind) const {
     ind->lower_cost = this->lower_cost;
+}
+
+double Follower::eval_simple_enum_cost(const int* route, const int length) const {
+    if (length <= 2) return 0.0;
+
+    prepare_temp_buffers(length);
+
+    // Copy route into temp buffer (length-sized, not node_cap)
+    std::memcpy(temp_route, route, sizeof(int) * length);
+
+    // accumulated distance
+    temp_accumulated_distance[0] = 0.0;
+    for (int i = 1; i < length; ++i) {
+        temp_accumulated_distance[i] =
+            temp_accumulated_distance[i - 1] + instance->get_distance(temp_route[i], temp_route[i - 1]);
+    }
+
+    const double total_distance = temp_accumulated_distance[length - 1];
+
+    if (total_distance <= preprocessor->max_cruise_distance_) {
+        return total_distance;
+    }
+
+    const int lower_bound = static_cast<int>(total_distance / preprocessor->max_cruise_distance_);
+    const int upper_bound = static_cast<int>(total_distance / preprocessor->max_cruise_distance_ + 1);
+
+    double final_cost = std::numeric_limits<double>::max();
+
+    for (int k = lower_bound; k <= upper_bound; ++k) {
+        recursive_charging_placement(
+            0, k,
+            temp_chosen_pos,
+            temp_best_chosen_pos,
+            final_cost,
+            k,
+            temp_route,
+            length,
+            temp_accumulated_distance
+        );
+
+        if (final_cost != std::numeric_limits<double>::max()) {
+            break;
+        }
+    }
+
+    return (final_cost != std::numeric_limits<double>::max()) ? final_cost : -1.0;
+}
+
+double Follower::eval_remove_enum_cost(const int* route, const int length) const {
+    if (length <= 2) return 0.0;
+
+    prepare_temp_buffers(length);
+    std::memcpy(temp_route, route, sizeof(int) * length);
+
+    temp_station_inserted.clear();
+
+    // Step 1: greedy insertion (same logic)
+    for (int i = 0; i < length - 1; ++i) {
+        double allowed_dis = preprocessor->max_cruise_distance_;
+        if (!temp_station_inserted.empty()) {
+            allowed_dis -= instance->get_distance(temp_station_inserted.back().station_id, temp_route[i]);
+        }
+
+        const int station = preprocessor->get_best_and_feasible_station(
+            temp_route[i], temp_route[i + 1], allowed_dis
+        );
+        if (station == -1) return -1.0;
+        temp_station_inserted.push_back({i, station});
+    }
+
+    // Step 2: remove redundant stations (same logic)
+    while (true) {
+        int best_idx = -1;
+        double max_saved = 0.0;
+
+        for (int k = 0; k < static_cast<int>(temp_station_inserted.size()); ++k) {
+            const int from_node = (k == 0) ? temp_route[0] : temp_station_inserted[k - 1].station_id;
+            const int to_node   = (k + 1 < static_cast<int>(temp_station_inserted.size()))
+                                    ? temp_station_inserted[k + 1].station_id
+                                    : temp_route[length - 1];
+
+            const int begin_idx = (k == 0) ? 0 : temp_station_inserted[k - 1].pos + 1;
+            const int end_idx   = (k + 1 < static_cast<int>(temp_station_inserted.size()))
+                                    ? temp_station_inserted[k + 1].pos
+                                    : length - 1;
+
+            double segment_dis = instance->get_distance(from_node, temp_route[begin_idx]);
+            for (int i = begin_idx; i < end_idx; ++i) {
+                segment_dis += instance->get_distance(temp_route[i], temp_route[i + 1]);
+            }
+            segment_dis += instance->get_distance(temp_route[end_idx], to_node);
+
+            if (segment_dis <= preprocessor->max_cruise_distance_) {
+                const int pos = temp_station_inserted[k].pos;
+                const int station = temp_station_inserted[k].station_id;
+
+                const double with_station =
+                    instance->get_distance(temp_route[pos], station) +
+                    instance->get_distance(station, temp_route[pos + 1]);
+                const double direct = instance->get_distance(temp_route[pos], temp_route[pos + 1]);
+
+                const double saved = with_station - direct;
+                if (saved > max_saved) {
+                    max_saved = saved;
+                    best_idx = k;
+                }
+            }
+        }
+
+        if (best_idx == -1) break;
+        temp_station_inserted.erase(temp_station_inserted.begin() + best_idx);
+    }
+
+    // Step 3: compute total cost without building repaired_route
+    double total_cost = 0.0;
+    for (int i = 0; i < length - 1; ++i) {
+        total_cost += instance->get_distance(temp_route[i], temp_route[i + 1]);
+    }
+
+    for (const auto& [pos, station_id] : temp_station_inserted) {
+        total_cost -= instance->get_distance(temp_route[pos], temp_route[pos + 1]);
+        total_cost += instance->get_distance(temp_route[pos], station_id) +
+                      instance->get_distance(station_id, temp_route[pos + 1]);
+    }
+
+    return total_cost;
 }
 
 double Follower::insert_station_by_simple_enum(int* repaired_route, int& repaired_length) const {
@@ -488,49 +638,113 @@ void Follower::recursive_charging_placement(const int m_len, const int n_len, in
 }
 
 double Follower::insert_station_by_all_enumeration(int* repaired_route, int& repaired_length) const {
-    const int length = repaired_length;
-    const auto route = new int[length];
-    memcpy(route, repaired_route, sizeof(int) * length);
-
-    vector<double> accumulated_distance(length, 0);
-    for (int i = 1; i < length; i++) {
+    const int original_length = repaired_length;
+    std::vector<int> route(repaired_route, repaired_route + original_length);
+    std::vector<double> accumulated_distance(original_length, 0.0);
+    for (int i = 1; i < original_length; ++i) {
         accumulated_distance[i] = accumulated_distance[i - 1] + instance->get_distance(route[i], route[i - 1]);
     }
     if (accumulated_distance.back() <= preprocessor->max_cruise_distance_) {
-        delete[] route;
         return accumulated_distance.back();
     }
 
-    const int upper_bound = ceil(accumulated_distance.back() / preprocessor->max_cruise_distance_);
-    const int lower_bound = floor(accumulated_distance.back() / preprocessor->max_cruise_distance_);
-    const auto chosen_pos = new int[length];
-    const auto chosen_sta = new int[length];
-    double cost = numeric_limits<double>::max();
-    ChargingMeta meta;
-    meta.cost = numeric_limits<double>::max();
-    for (int i = lower_bound; i <= upper_bound; i++) {
-        ChargingMeta iter_meta = try_enumerate_n_stations_to_route(0, i, chosen_sta, chosen_pos,cost, i, route, length, accumulated_distance);
-        if (cost != numeric_limits<double>::max() && cost < meta.cost) {
-            meta = iter_meta;
-        }
-    }
-    delete[] chosen_pos;
-    delete[] chosen_sta;
-    delete[] route;
+    const int lower_bound = static_cast<int>(std::floor(accumulated_distance.back() / preprocessor->max_cruise_distance_));
+    const int upper_bound = static_cast<int>(std::ceil(accumulated_distance.back() / preprocessor->max_cruise_distance_));
 
-    if (cost != numeric_limits<double>::max()) {
-        for (int k = meta.num_stations - 1; k >= 0; k--) {
-            const int insertPos = meta.chosen_pos[k] + 1;
-            for (int i = repaired_length; i > insertPos; i--) {
+    std::vector<int> chosen_pos(original_length, 0);
+    std::vector<int> chosen_sta(original_length, 0);
+    ChargingMeta best_meta;
+    best_meta.cost = std::numeric_limits<double>::max();
+
+    const auto try_station_count = [&](const int station_count) {
+        double iter_cost = std::numeric_limits<double>::max();
+        ChargingMeta iter_meta = try_enumerate_n_stations_to_route(
+            0,
+            station_count,
+            chosen_sta.data(),
+            chosen_pos.data(),
+            iter_cost,
+            station_count,
+            route.data(),
+            original_length,
+            accumulated_distance);
+
+        if (iter_cost != std::numeric_limits<double>::max() && iter_meta.cost < best_meta.cost) {
+            best_meta = std::move(iter_meta);
+        }
+
+        return iter_cost != std::numeric_limits<double>::max();
+    };
+
+    const auto materialize_best_meta = [&]() {
+        std::memcpy(repaired_route, route.data(), sizeof(int) * original_length);
+        repaired_length = original_length;
+        for (int k = best_meta.num_stations - 1; k >= 0; --k) {
+            const int insert_pos = best_meta.chosen_pos[k] + 1;
+            for (int i = repaired_length; i > insert_pos; --i) {
                 repaired_route[i] = repaired_route[i - 1];
             }
-            repaired_route[insertPos] = meta.chosen_sta[k];
-            repaired_length++;
+            repaired_route[insert_pos] = best_meta.chosen_sta[k];
+            ++repaired_length;
         }
 
-        return cost;
+        return best_meta.cost;
+    };
+
+    // Preserve the original exact refinement range first to avoid perturbing instances that already work well.
+    for (int k = lower_bound; k <= upper_bound; ++k) {
+        try_station_count(k);
     }
-    return -1;
+    if (best_meta.cost != std::numeric_limits<double>::max()) {
+        return materialize_best_meta();
+    }
+
+    // Only if the original range fails, use a feasible remove-enum route to extend the station-count search safely.
+    std::vector<int> feasible_bound_route(node_cap, 0);
+    std::memcpy(feasible_bound_route.data(), repaired_route, sizeof(int) * original_length);
+    int feasible_bound_length = original_length;
+    const double feasible_bound_cost = insert_station_by_remove_enum(
+        feasible_bound_route.data(), feasible_bound_length);
+
+    if (feasible_bound_cost >= 0) {
+        const int feasible_upper_bound = feasible_bound_length - original_length;
+        const int expanded_lower_bound = upper_bound + 1;
+        int first_feasible_k = -1;
+
+        for (int k = expanded_lower_bound; k <= feasible_upper_bound; ++k) {
+            if (try_station_count(k)) {
+                first_feasible_k = k;
+                break;
+            }
+        }
+
+        if (first_feasible_k != -1) {
+            for (int k = first_feasible_k + 1; k <= feasible_upper_bound; ++k) {
+                try_station_count(k);
+            }
+            return materialize_best_meta();
+        }
+    }
+
+    // Fall back to the standard follower path as a safety net when exact refinement still fails.
+    std::vector<int> standard_fallback_route(node_cap, 0);
+    std::memcpy(standard_fallback_route.data(), repaired_route, sizeof(int) * original_length);
+    int standard_fallback_length = original_length;
+    double standard_fallback_cost = insert_station_by_simple_enum(
+        standard_fallback_route.data(), standard_fallback_length);
+    if (standard_fallback_cost < 0) {
+        std::memcpy(standard_fallback_route.data(), repaired_route, sizeof(int) * original_length);
+        standard_fallback_length = original_length;
+        standard_fallback_cost = insert_station_by_remove_enum(
+            standard_fallback_route.data(), standard_fallback_length);
+        if (standard_fallback_cost < 0) {
+            return -1.0;
+        }
+    }
+
+    std::memcpy(repaired_route, standard_fallback_route.data(), sizeof(int) * standard_fallback_length);
+    repaired_length = standard_fallback_length;
+    return standard_fallback_cost;
 }
 
 ChargingMeta Follower::try_enumerate_n_stations_to_route(const int m_len, const int n_len, int *chosen_sta,
@@ -538,6 +752,7 @@ ChargingMeta Follower::try_enumerate_n_stations_to_route(const int m_len, const 
     const vector<double> &accumulated_distance) const {
 
     ChargingMeta meta;
+    meta.cost = std::numeric_limits<double>::max();
 
     // This structure is used in the "enumerate stations"
     struct State {
@@ -633,7 +848,7 @@ ChargingMeta Follower::try_enumerate_n_stations_to_route(const int m_len, const 
         }
     }
 
-    return std::move(meta);
+    return meta;
 }
 
 std::ostream& operator<<(std::ostream& os, const Follower& follower) {

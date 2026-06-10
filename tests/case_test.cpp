@@ -5,14 +5,17 @@
 #include "gtest/gtest.h"
 #include "case.hpp"
 
+#include <filesystem>
+
 using namespace ::testing;
+namespace fs = std::filesystem;
 
 class CaseTest : public ::testing::Test {
 protected:
     void SetUp() override {
         const std::string file_name_ = "E-n29-k4-s7.evrp";
-        const std::string kDataPath = "../data";  // 根据你实际路径调整
-        instance = new Case(kDataPath, file_name_);
+        const fs::path kDataPath = fs::path(__FILE__).parent_path().parent_path() / "data";
+        instance = new Case(kDataPath.string(), file_name_);
     }
 
     void TearDown() override {
@@ -48,4 +51,15 @@ TEST_F(CaseTest, Constructor) {
     // 安全性测试：不越界、不访问 Node 29（不存在）
     EXPECT_LT(28, instance->problem_size_);
     EXPECT_FALSE(instance->is_charging_station(29)); // 不应测试越界节点
+}
+
+TEST_F(CaseTest, ReadProblemThrowsWhenFileCannotBeOpened) {
+    const fs::path missing_file = fs::path(__FILE__).parent_path() / "__missing_instance__.evrp";
+
+    try {
+        instance->read_problem(missing_file);
+        FAIL() << "Expected read_problem() to throw for an unreadable file.";
+    } catch (const std::runtime_error& e) {
+        EXPECT_NE(std::string(e.what()).find("Failed to open file:"), std::string::npos);
+    }
 }

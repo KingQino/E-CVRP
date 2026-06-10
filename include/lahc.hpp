@@ -7,36 +7,42 @@
 
 #include "case.hpp"
 #include "initializer.hpp"
-#include "leader_lahc.hpp"
+#include "leader_single.hpp"
 #include "follower.hpp"
 #include "individual.hpp"
 #include "heuristic_interface.hpp"
 #include "stats_interface.hpp"
-
-using namespace std;
 
 class Lahc final : public HeuristicInterface, public StatsInterface {
 public:
     bool enable_logging;                        // Whether to enable logging
     int stop_criteria;                          // Stop criteria for the algorithm
 
-    long iter;                                  // Iteration counter I
+    long iter;                                  // Iteration counter within one restart
+    long iter_global;                           // Global iteration counter across all restarts
     long idle_iter;                             // Idle iteration counter
     long history_length;                        // Parameter：LAHC history length Lh
     double num_successful_moves_per_history;    // the number of algorithm moves per history length iteration
     double ratio_successful_moves;              // the ratio of successful moves per history length iteration
-    double low_opt_trigger_threshold;           // Parameter：The threshold to trigger the lower-level optimisation，in [0.0, 1.0]
     double low_opt_trigger_margin;              // Parameter：The margin to trigger the lower-level optimisation, >= 1.0
-    vector<double> history_list;                // Lahc history list L, it holds the objetive values
+    std::vector<double> history_list;           // Lahc history list L, it holds the objetive values
     Indicators history_list_metrics;            // The statistical info of the history list
     Individual* current;                        // Current solution s
-    double best_upper_cost;                     // The best upper-level cost found so far
+    double global_best_upper_cost;                     // The best upper-level cost found so far
     std::unique_ptr<Individual> global_best;    // Global best solution found so far
     std::uniform_real_distribution<> history_noise; // history list initialisation noise
-    int restart_idx;                            // Restart count for the heuristic
+    int restart_idx;                            // Current restart index (1-based for logging)
+
+    // Lightweight timing instrumentation (active when logging is enabled)
+    double prof_leader_greedy_sec;
+    double prof_leader_neigh_sec;
+    double prof_follower_run_sec;
+    double prof_follower_refine_sec;
+    long prof_leader_neigh_calls;
+    long prof_follower_run_calls;
 
     Initializer* initializer;
-    LeaderLahc* leader;
+    Leader* leader;
     Follower* follower;
 
     Lahc(int seed, Case *instance, Preprocessor* preprocessor);
@@ -48,6 +54,7 @@ public:
     void close_log_for_evolution() override;
     void flush_row_into_evol_log() override;
     void save_log_for_solution() override;
+    void save_log_for_profile() const;
 
 };
 

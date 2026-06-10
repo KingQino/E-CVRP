@@ -9,9 +9,7 @@
 #include "case.hpp"
 #include "preprocessor.hpp"
 
-using namespace std;
-
-// This structure is specifically designed to coordinate the leader and follower, to avoid pass the whole solution (too expensive)
+// Coordinates leader/follower updates without passing a whole solution.
 struct PartialSolution {
     int move_type;      // the type of move, 0 for intra-route, 1 for inter-route, 2 for inter-route with empty route
 
@@ -33,7 +31,7 @@ struct PartialSolution {
     void set_intra_route(int idx, int* route, int length);
     void set_inter_route(int r1, int* rout1, int len1, bool emp1, int r2, int* rout2, int len2, bool emp2);
 
-    friend ostream& operator<<(ostream& os, const PartialSolution& partial_sol);
+    friend std::ostream& operator<<(std::ostream& os, const PartialSolution& partial_sol);
 };
 
 class Individual {
@@ -56,17 +54,17 @@ public:
     Individual();                                                                   // Constructor: empty individual
     Individual(const Individual& ind);                                              // Copy constructor
     Individual(Case* instance, Preprocessor* preprocessor);                         // Constructor: random individual
-    Individual(Case* instance, Preprocessor* preprocessor, const vector<vector<int>>& routes, double upper_cost,
-        const vector<int>& demand_sum_per_route);  // Constructor: some delicate methods for initialisation
+    Individual(Case* instance, Preprocessor* preprocessor, const std::vector<std::vector<int>>& routes, double upper_cost,
+        const std::vector<int>& demand_sum_per_route);  // Constructor: some delicate methods for initialisation
     ~Individual();
     Individual& operator=(const Individual& other);
 
     void clean();
-    void load_routes(const vector<vector<int>>& routes, double upper_cost, const vector<int>& demand_sum_per_route);
-    [[nodiscard]] vector<int> get_chromosome() const; // Get the chromosome of the individual
+    void load_routes(const std::vector<std::vector<int>>& routes, double upper_cost, const std::vector<int>& demand_sum_per_route);
+    [[nodiscard]] std::vector<int> get_chromosome() const; // Get the chromosome of the individual
 
     friend void swap(Individual& a, Individual& b) noexcept;
-    friend ostream& operator<<(ostream& os, const Individual& individual);
+    friend std::ostream& operator<<(std::ostream& os, const Individual& individual);
 };
 
 #endif //INDIVIDUAL_HPP

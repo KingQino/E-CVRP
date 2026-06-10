@@ -14,8 +14,10 @@
 
 // Hash function for pairs of route indices
 struct PairHash {
-    size_t operator() (pair<int, int> const & a_pair) const {
-        return a_pair.first * 512 + a_pair.second;
+    std::size_t operator()(const std::pair<int,int>& p) const noexcept {
+        const uint64_t a = static_cast<uint32_t>(p.first);
+        const uint64_t b = static_cast<uint32_t>(p.second);
+        return static_cast<std::size_t>((a << 32) | b);
     }
 };
 
@@ -38,11 +40,11 @@ public:
     double max_cruise_distance_{};  // the max cruise distance the vehicle can travel without recharging the battery
     double max_distance_{};         // the longest arc distance between any two nodes
 
-    vector<int> customer_ids_;      // the id of customers
-    vector<int> station_ids_;       // the id of charging stations
+    std::vector<int> customer_ids_;      // the id of customers
+    std::vector<int> station_ids_;       // the id of charging stations
 
-    vector<vector<int>> sorted_nearby_customers_;   // For Hien's clustering usage only. For each customer, a list of customer nodes from near to far, e.g., {index 1: [5,3,2,6], index 2: [], ...}
-    vector<vector<int>> best_station_;              // For each pair of customers, the best station to visit, i.e., the station that minimizes the extra cost
+    std::vector<std::vector<int>> sorted_nearby_customers_;   // For Hien's clustering usage only. For each customer, a list of customer nodes from near to far, e.g., {index 1: [5,3,2,6], index 2: [], ...}
+    std::vector<std::vector<int>> best_station_;              // For each pair of customers, the best station to visit, i.e., the station that minimizes the extra cost
 
     Preprocessor(const Case& c, const Parameters& params);
 

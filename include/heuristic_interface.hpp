@@ -11,19 +11,17 @@
 #include <chrono>
 #include <utility>
 
-using namespace std;
-
 class HeuristicInterface {
 public:
-    string name;
+    std::string name;
     int seed;
     Case* instance;
     Preprocessor* preprocessor;
     std::mt19937 random_engine;
-    uniform_real_distribution<> uniform_real_dist;
+    std::uniform_real_distribution<> uniform_real_dist;
 
     // Constructor to initialize member variables
-    HeuristicInterface(string heuristic_name, const int seed_value, Case* instance, Preprocessor* preprocessor)
+    HeuristicInterface(std::string heuristic_name, const int seed_value, Case* instance, Preprocessor* preprocessor)
             : name(std::move(heuristic_name)),
               seed(seed_value),
               instance(instance),
