@@ -61,7 +61,7 @@ The repository includes WCCI2020, WCCI2020 extension, and EVRPTW-derived instanc
 
 ## Licence
 
-[![Licence](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](https://yinghao.mit-license.org/license.html)
+[![Licence](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 
-- [MIT licence](https://yinghao.mit-license.org/license.html)
+- [MIT licence](LICENSE)
 - Copyright(c) 2025 Yinghao Qin
