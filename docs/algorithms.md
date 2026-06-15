@@ -15,7 +15,7 @@ The IEEE WCCI 2020 benchmark uses:
 Max Evals = 25,000 * pz
 ```
 
-where `pz` is the number of depots, customers, and charging stations. A complete evaluation has time complexity `O(n^2)`. Accessing an arc weight contributes a fractional evaluation budget of `1 / pz`.
+where `pz` is the number of depots, customers, and charging stations. Accessing an arc weight contributes a fractional evaluation budget of `1 / pz`.
 
 ### Max Time
 
