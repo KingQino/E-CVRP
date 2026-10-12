@@ -45,6 +45,7 @@ public:
     /* Auxiliary data structures to run the follower (i.e., lower optimisation) algorithm */
     int route_cap;                         // the maximum number of routes
     int node_cap;                          // the maximum number of nodes in a route
+    int lower_node_cap;                    // capacity of each lower_routes row (charged route: nodes + stations)
     int num_routes;                        // Number of routes
     int** lower_routes;                    // the routing + charging solution
     int*  lower_num_nodes_per_route;       // the node number of each route in the lower-level solution
@@ -70,7 +71,7 @@ public:
     double insert_station_by_remove_enum(int* repaired_route, int& repaired_length) const;
     void recursive_charging_placement(int m_len, int n_len, int* chosen_pos, int* best_chosen_pos, double& final_cost,
         int cur_upper_bound, const int* route, int length, const double* accumulated_distance) const;
-    // Exact charging placement for the final refinement (dynamic programming over station count, edge and station).
+    // Optimal charging placement for the final refinement (shortest path over any number of stations).
     double insert_station_by_all_enumeration(int* repaired_route, int& repaired_length) const;
 
     friend std::ostream& operator<<(std::ostream& os, const Follower& follower);

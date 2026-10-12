@@ -19,13 +19,18 @@ Follower::Follower(Case* instance, Preprocessor* preprocessor) {
     route_cap = preprocessor->route_cap_;
     node_cap = preprocessor->node_cap_;
 
+    // Charged routes are longer than upper-level routes (stations are inserted), so the lower-level
+    // route rows get their own capacity. An upper route has at most node_cap nodes and the standard
+    // follower inserts at most one station per edge, so 2 * node_cap always suffices; the final
+    // refinement checks the length and falls back to one station per edge if its placement would not fit.
+    lower_node_cap = 2 * node_cap;
     prepare_temp_buffers(node_cap);
 
     this->num_routes = 0;
     this->lower_routes = new int *[route_cap];
     for (int i = 0; i < route_cap; ++i) {
-        this->lower_routes[i] = new int [node_cap];
-        memset(this->lower_routes[i], 0, sizeof(int) * node_cap);
+        this->lower_routes[i] = new int [lower_node_cap];
+        memset(this->lower_routes[i], 0, sizeof(int) * lower_node_cap);
     }
     this->lower_num_nodes_per_route = new int [route_cap];
     memset(this->lower_num_nodes_per_route, 0, sizeof(int) * route_cap);
@@ -126,11 +131,11 @@ void Follower::run(const PartialSolution* partial_sol) {
 
             const int last = num_routes - 1;
             if (idx2 != last) {
-                memcpy(lower_routes[idx2], lower_routes[last], sizeof(int) * node_cap);
+                memcpy(lower_routes[idx2], lower_routes[last], sizeof(int) * lower_node_cap);
                 lower_num_nodes_per_route[idx2] = lower_num_nodes_per_route[last];
                 lower_cost_per_route[idx2] = lower_cost_per_route[last];
             }
-            memset(lower_routes[last], 0, sizeof(int) * node_cap);
+            memset(lower_routes[last], 0, sizeof(int) * lower_node_cap);
             lower_num_nodes_per_route[last] = 0;
             lower_cost_per_route[last] = 0.0;
             num_routes--;
@@ -144,11 +149,11 @@ void Follower::run(const PartialSolution* partial_sol) {
 
             const int last = num_routes - 1;
             if (idx1 != last) {
-                memcpy(lower_routes[idx1], lower_routes[last], sizeof(int) * node_cap);
+                memcpy(lower_routes[idx1], lower_routes[last], sizeof(int) * lower_node_cap);
                 lower_num_nodes_per_route[idx1] = lower_num_nodes_per_route[last];
                 lower_cost_per_route[idx1] = lower_cost_per_route[last];
             }
-            memset(lower_routes[last], 0, sizeof(int) * node_cap);
+            memset(lower_routes[last], 0, sizeof(int) * lower_node_cap);
             lower_num_nodes_per_route[last] = 0;
             lower_cost_per_route[last] = 0.0;
             num_routes--;
@@ -228,8 +233,8 @@ void Follower::load_individual(const Individual* ind) {
         // copy its whole row and clear the remainder.
         const int copied = std::min(node_cap, ind->node_cap);
         memcpy(this->lower_routes[i], ind->routes[i], sizeof(int) * copied);
-        if (copied < node_cap) {
-            memset(this->lower_routes[i] + copied, 0, sizeof(int) * (node_cap - copied));
+        if (copied < lower_node_cap) {
+            memset(this->lower_routes[i] + copied, 0, sizeof(int) * (lower_node_cap - copied));
         }
     }
 }
@@ -647,22 +652,26 @@ void Follower::recursive_charging_placement(const int m_len, const int n_len, in
 
 namespace {
 
-// Optimal charging-station placement for a fixed route with exactly k stations, by dynamic programming.
+// Optimal charging-station placement for a fixed customer sequence (shortest path).
 //
-// The vehicle recharges fully at every station, so the pieces between two consecutive stations are
-// independent: a placement is feasible iff every piece is within the cruise range, and its cost is the
-// route length plus the sum of the station detours. The DP state is "k stations placed, the last one is
-// station s on edge e = (route[e], route[e + 1])". It applies exactly the same pruning and feasibility
-// rules as the former exhaustive enumeration (at most one station per edge, edges in route order), so it
-// finds the same best cost for every k in O(k * edges * window * stations^2) time instead of
-// O(C(edges, k) * stations^k). Layers are built on demand, so only the station counts that are tried
-// are computed.
+// The vehicle recharges fully at every station, so the route splits into independent pieces between
+// charging points, and a placement is feasible iff every piece is within the cruise range. A label is
+// "charged at station s, which is inserted on edge e = (route[e], route[e + 1])", with the shortest
+// distance travelled from the start depot. Labels are processed edge by edge; inside one edge a vehicle
+// may also drive from one station straight to another, so several consecutive stations between two
+// customers are allowed. Any number of stations is allowed, and among placements of equal cost the one
+// with fewer stations is kept. Time O(edges * (window * S^2 + S^2)) with S stations.
 class ChargingPlacementDp {
 public:
+    struct Placement {
+        double cost = std::numeric_limits<double>::max();  // max if there is no feasible placement
+        std::vector<int> edge;     // edge index of each inserted station, in route order
+        std::vector<int> station;  // inserted station ids, in route order
+    };
+
     ChargingPlacementDp(Case& instance, const Preprocessor& preprocessor, const int* route,
                         const int length, const std::vector<double>& accumulated_distance)
-        : instance_(instance),
-          route_(route),
+        : route_(route),
           edges_(length - 1),
           stations_(instance.num_station_),
           range_(preprocessor.max_cruise_distance_),
@@ -670,70 +679,102 @@ public:
           station_ids_(preprocessor.station_ids_) {
         to_station_.resize(static_cast<size_t>(edges_) * stations_);
         from_station_.resize(static_cast<size_t>(edges_) * stations_);
-        detour_.resize(static_cast<size_t>(edges_) * stations_);
         for (int e = 0; e < edges_; ++e) {
-            const double edge_length = accumulated_[e + 1] - accumulated_[e];
             for (int s = 0; s < stations_; ++s) {
-                const size_t idx = index(e, s);
-                to_station_[idx] = instance.get_distance(route_[e], station_ids_[s]);
-                from_station_[idx] = instance.get_distance(station_ids_[s], route_[e + 1]);
-                detour_[idx] = to_station_[idx] + from_station_[idx] - edge_length;
+                to_station_[index(e, s)] = instance.get_distance(route_[e], station_ids_[s]);
+                from_station_[index(e, s)] = instance.get_distance(station_ids_[s], route_[e + 1]);
+            }
+        }
+        between_stations_.resize(static_cast<size_t>(stations_) * stations_);
+        for (int q = 0; q < stations_; ++q) {
+            for (int s = 0; s < stations_; ++s) {
+                between_stations_[static_cast<size_t>(q) * stations_ + s] =
+                    q == s ? 0.0 : instance.get_distance(station_ids_[q], station_ids_[s]);
             }
         }
     }
 
-    // Best placement with exactly k stations; meta.cost == DBL max if there is none.
-    ChargingMeta best_with(const int k) {
-        ChargingMeta meta;
-        meta.cost = std::numeric_limits<double>::max();
-        if (k <= 0 || k > edges_ || stations_ <= 0) return meta;
-        extend_to(k);
+    Placement solve() const {
+        Placement best;
+        if (edges_ <= 0 || stations_ <= 0) return best;
 
-        const std::vector<double>& layer = value_[k - 1];
+        const size_t labels = static_cast<size_t>(edges_) * stations_;
+        std::vector<double> distance(labels, kUnreached);
+        std::vector<int> count(labels, 0);
+        std::vector<int> parent(labels, -1);  // previous label, -1 = start depot
         const double total = accumulated_.back();
-        int best_idx = -1;
-        double best_value = std::numeric_limits<double>::max();
+        int best_label = -1;
+        int best_count = 0;
+
         for (int e = 0; e < edges_; ++e) {
-            // the last piece runs from the station on edge e to the end depot
-            if (total - accumulated_[e + 1] >= range_) continue;
+            // Arrive at a station on edge e from the start depot or from a station on an earlier edge.
             for (int s = 0; s < stations_; ++s) {
-                const size_t idx = index(e, s);
-                if (layer[idx] == kInfeasible) continue;
-                if (total - accumulated_[e + 1] + from_station_[idx] > range_) continue;
-                if (layer[idx] < best_value) {
-                    best_value = layer[idx];
-                    best_idx = static_cast<int>(idx);
+                const size_t at = index(e, s);
+                if (accumulated_[e] + to_station_[at] <= range_) {
+                    relax(distance, count, parent, at, accumulated_[e] + to_station_[at], 1, -1);
+                }
+                for (int i = e - 1; i >= 0; --i) {
+                    const double between = accumulated_[e] - accumulated_[i + 1];
+                    if (between > range_) break;  // earlier edges are even further away
+                    for (int q = 0; q < stations_; ++q) {
+                        const size_t from = index(i, q);
+                        if (distance[from] == kUnreached) continue;
+                        const double piece = from_station_[from] + between + to_station_[at];
+                        if (piece > range_) continue;
+                        relax(distance, count, parent, at, distance[from] + piece, count[from] + 1,
+                              static_cast<int>(from));
+                    }
+                }
+            }
+            // Station-to-station moves inside edge e (Dijkstra over the stations of this edge).
+            std::vector<char> settled(stations_, 0);
+            for (int round = 0; round < stations_; ++round) {
+                int q = -1;
+                for (int s = 0; s < stations_; ++s) {
+                    const size_t at = index(e, s);
+                    if (settled[s] || distance[at] == kUnreached) continue;
+                    if (q < 0 || better(distance[at], count[at], distance[index(e, q)], count[index(e, q)])) q = s;
+                }
+                if (q < 0) break;
+                settled[q] = 1;
+                const size_t from = index(e, q);
+                for (int s = 0; s < stations_; ++s) {
+                    if (settled[s]) continue;
+                    const double hop = between_stations_[static_cast<size_t>(q) * stations_ + s];
+                    if (hop > range_) continue;
+                    relax(distance, count, parent, index(e, s), distance[from] + hop, count[from] + 1,
+                          static_cast<int>(from));
+                }
+            }
+            // Finish at the end depot from a station on edge e.
+            for (int s = 0; s < stations_; ++s) {
+                const size_t at = index(e, s);
+                if (distance[at] == kUnreached) continue;
+                const double piece = from_station_[at] + total - accumulated_[e + 1];
+                if (piece > range_) continue;
+                const double cost = distance[at] + piece;
+                if (best_label < 0 || better(cost, count[at], best.cost, best_count)) {
+                    best.cost = cost;
+                    best_count = count[at];
+                    best_label = static_cast<int>(at);
                 }
             }
         }
-        if (best_idx < 0) return meta;
+        if (best_label < 0) return best;
 
-        meta.num_stations = k;
-        meta.chosen_pos.assign(k, 0);
-        meta.chosen_sta.assign(k, 0);
-        int idx = best_idx;
-        for (int layer_k = k; layer_k >= 1; --layer_k) {
-            meta.chosen_pos[layer_k - 1] = idx / stations_;
-            meta.chosen_sta[layer_k - 1] = station_ids_[idx % stations_];
-            idx = parent_[layer_k - 1][idx];
+        for (int label = best_label; label >= 0; label = parent[label]) {
+            best.edge.push_back(label / stations_);
+            best.station.push_back(station_ids_[label % stations_]);
         }
-        // Same formula and summation order as the former enumeration, so equal-cost ties resolve the same way.
-        double cost = total;
-        for (int j = 0; j < k; ++j) {
-            const int first_node = route_[meta.chosen_pos[j]];
-            const int second_node = route_[meta.chosen_pos[j] + 1];
-            cost -= instance_.get_distance(first_node, second_node);
-            cost += instance_.get_distance(first_node, meta.chosen_sta[j]);
-            cost += instance_.get_distance(meta.chosen_sta[j], second_node);
-        }
-        meta.cost = cost;
-        return meta;
+        std::reverse(best.edge.begin(), best.edge.end());
+        std::reverse(best.station.begin(), best.station.end());
+        return best;
     }
 
 private:
-    static constexpr double kInfeasible = std::numeric_limits<double>::infinity();
+    static constexpr double kUnreached = std::numeric_limits<double>::infinity();
+    static constexpr double kTieTolerance = 1e-9;
 
-    Case& instance_;
     const int* route_;
     int edges_;
     int stations_;
@@ -742,55 +783,23 @@ private:
     const std::vector<int>& station_ids_;
     std::vector<double> to_station_;
     std::vector<double> from_station_;
-    std::vector<double> detour_;
-    std::vector<std::vector<double>> value_;  // value_[k-1][e*S+s]: min total detour, k stations, last one (e, s)
-    std::vector<std::vector<int>> parent_;    // parent_[k-1][e*S+s]: state of station k-1 (-1 for k = 1)
+    std::vector<double> between_stations_;
 
     size_t index(const int e, const int s) const { return static_cast<size_t>(e) * stations_ + s; }
 
-    void extend_to(const int k) {
-        while (static_cast<int>(value_.size()) < k) {
-            const int layer_k = static_cast<int>(value_.size()) + 1;
-            std::vector<double> layer(static_cast<size_t>(edges_) * stations_, kInfeasible);
-            std::vector<int> parent(layer.size(), -1);
-            if (layer_k == 1) {
-                for (int e = 0; e < edges_; ++e) {
-                    if (accumulated_[e] >= range_) break;  // the first piece already exceeds the range
-                    for (int s = 0; s < stations_; ++s) {
-                        const size_t idx = index(e, s);
-                        if (accumulated_[e] + to_station_[idx] <= range_) layer[idx] = detour_[idx];
-                    }
-                }
-            } else {
-                const std::vector<double>& previous = value_[layer_k - 2];
-                for (int j = layer_k - 1; j < edges_; ++j) {
-                    for (int t = 0; t < stations_; ++t) {
-                        const size_t to = index(j, t);
-                        double best = kInfeasible;
-                        int best_parent = -1;
-                        for (int i = j - 1; i >= layer_k - 2; --i) {
-                            const double between = accumulated_[j] - accumulated_[i + 1];
-                            if (between >= range_) break;  // earlier edges are even further away
-                            const double base = between + to_station_[to];
-                            if (base > range_) continue;
-                            for (int s = 0; s < stations_; ++s) {
-                                const size_t from = index(i, s);
-                                if (previous[from] == kInfeasible) continue;
-                                if (base + from_station_[from] > range_) continue;
-                                const double candidate = previous[from] + detour_[to];
-                                if (candidate < best) {
-                                    best = candidate;
-                                    best_parent = static_cast<int>(from);
-                                }
-                            }
-                        }
-                        layer[to] = best;
-                        parent[to] = best_parent;
-                    }
-                }
-            }
-            value_.push_back(std::move(layer));
-            parent_.push_back(std::move(parent));
+    // Shorter distance first; on (near) equal distance, fewer stations.
+    static bool better(const double distance, const int count, const double other_distance, const int other_count) {
+        if (distance < other_distance - kTieTolerance) return true;
+        if (distance > other_distance + kTieTolerance) return false;
+        return count < other_count;
+    }
+
+    static void relax(std::vector<double>& distance, std::vector<int>& count, std::vector<int>& parent,
+                      const size_t at, const double value, const int stations, const int from) {
+        if (distance[at] == kUnreached || better(value, stations, distance[at], count[at])) {
+            distance[at] = value;
+            count[at] = stations;
+            parent[at] = from;
         }
     }
 };
@@ -808,74 +817,28 @@ double Follower::insert_station_by_all_enumeration(int* repaired_route, int& rep
         return accumulated_distance.back();
     }
 
-    const int lower_bound = static_cast<int>(std::floor(accumulated_distance.back() / preprocessor->max_cruise_distance_));
-    const int upper_bound = static_cast<int>(std::ceil(accumulated_distance.back() / preprocessor->max_cruise_distance_));
-
-    ChargingPlacementDp placement(*instance, *preprocessor, route.data(), original_length, accumulated_distance);
-    ChargingMeta best_meta;
-    best_meta.cost = std::numeric_limits<double>::max();
-
-    const auto try_station_count = [&](const int station_count) {
-        ChargingMeta iter_meta = placement.best_with(station_count);
-        const bool feasible = iter_meta.cost != std::numeric_limits<double>::max();
-        if (feasible && iter_meta.cost < best_meta.cost) {
-            best_meta = std::move(iter_meta);
-        }
-        return feasible;
-    };
-
-    const auto materialize_best_meta = [&]() {
-        std::memcpy(repaired_route, route.data(), sizeof(int) * original_length);
-        repaired_length = original_length;
-        for (int k = best_meta.num_stations - 1; k >= 0; --k) {
-            const int insert_pos = best_meta.chosen_pos[k] + 1;
-            for (int i = repaired_length; i > insert_pos; --i) {
-                repaired_route[i] = repaired_route[i - 1];
-            }
-            repaired_route[insert_pos] = best_meta.chosen_sta[k];
-            ++repaired_length;
-        }
-
-        return best_meta.cost;
-    };
-
-    // Preserve the original exact refinement range first to avoid perturbing instances that already work well.
-    for (int k = lower_bound; k <= upper_bound; ++k) {
-        try_station_count(k);
-    }
-    if (best_meta.cost != std::numeric_limits<double>::max()) {
-        return materialize_best_meta();
-    }
-
-    // Only if the original range fails, use a feasible remove-enum route to extend the station-count search safely.
-    std::vector<int> feasible_bound_route(node_cap, 0);
-    std::memcpy(feasible_bound_route.data(), repaired_route, sizeof(int) * original_length);
-    int feasible_bound_length = original_length;
-    const double feasible_bound_cost = insert_station_by_remove_enum(
-        feasible_bound_route.data(), feasible_bound_length);
-
-    if (feasible_bound_cost >= 0) {
-        const int feasible_upper_bound = feasible_bound_length - original_length;
-        const int expanded_lower_bound = upper_bound + 1;
-        int first_feasible_k = -1;
-
-        for (int k = expanded_lower_bound; k <= feasible_upper_bound; ++k) {
-            if (try_station_count(k)) {
-                first_feasible_k = k;
-                break;
+    // Optimal placement over any number of stations, including consecutive stations on one edge.
+    const ChargingPlacementDp placement(*instance, *preprocessor, route.data(), original_length, accumulated_distance);
+    const ChargingPlacementDp::Placement best = placement.solve();
+    if (best.cost != std::numeric_limits<double>::max()
+        && original_length + static_cast<int>(best.edge.size()) <= lower_node_cap) {
+        repaired_length = 0;
+        size_t next = 0;
+        for (int i = 0; i < original_length; ++i) {
+            repaired_route[repaired_length++] = route[i];
+            while (next < best.edge.size() && best.edge[next] == i) {
+                repaired_route[repaired_length++] = best.station[next++];
             }
         }
-
-        if (first_feasible_k != -1) {
-            for (int k = first_feasible_k + 1; k <= feasible_upper_bound; ++k) {
-                try_station_count(k);
-            }
-            return materialize_best_meta();
+        double cost = 0.0;
+        for (int i = 1; i < repaired_length; ++i) {
+            cost += instance->get_distance(repaired_route[i - 1], repaired_route[i]);
         }
+        return cost;
     }
 
-    // Fall back to the standard follower path as a safety net when exact refinement still fails.
-    std::vector<int> standard_fallback_route(node_cap, 0);
+    // No feasible placement exists; keep the standard follower path as a safety net.
+    std::vector<int> standard_fallback_route(lower_node_cap, 0);
     std::memcpy(standard_fallback_route.data(), repaired_route, sizeof(int) * original_length);
     int standard_fallback_length = original_length;
     double standard_fallback_cost = insert_station_by_simple_enum(
