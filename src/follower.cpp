@@ -222,7 +222,13 @@ void Follower::load_individual(const Individual* ind) {
     for (int i = 0; i < num_routes; ++i) {
         this->lower_num_nodes_per_route[i] = ind->num_nodes_per_route[i];
 
-        memcpy(this->lower_routes[i], ind->routes[i], sizeof(int) * node_cap);
+        // An individual may use a smaller node capacity than the follower (e.g. MA's population);
+        // copy its whole row and clear the remainder.
+        const int copied = std::min(node_cap, ind->node_cap);
+        memcpy(this->lower_routes[i], ind->routes[i], sizeof(int) * copied);
+        if (copied < node_cap) {
+            memset(this->lower_routes[i] + copied, 0, sizeof(int) * (node_cap - copied));
+        }
     }
 }
 

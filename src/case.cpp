@@ -125,7 +125,6 @@ void Case::read_problem(const std::filesystem::path& file_path) {
 
     // === 4. POSITIONS_: depot + customer + stations ===
     this->problem_size_ = num_depot_ + num_customer_ + num_station_;
-    this->eval_increment_ = (this->problem_size_ > 0) ? 1.0 / static_cast<double>(this->problem_size_) : 0.0;
     positions_.resize(problem_size_, {0, 0});
 
     // Go back to read NODE_COORD_SECTION
@@ -224,7 +223,7 @@ double Case::compute_total_distance(const std::vector<std::vector<int>>& routes)
         }
     }
 
-    evals_++;
+    distance_calls_ += static_cast<std::uint64_t>(problem_size_);  // one full evaluation
 
     return tour_length;
 }

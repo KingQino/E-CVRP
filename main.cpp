@@ -11,6 +11,7 @@
 #include "magic_enum.hpp"
 #include "stats_interface.hpp"
 #include "lahc.hpp"
+#include "ma.hpp"
 #include "two_stage_alns.hpp"
 
 namespace fs = std::filesystem;
@@ -36,6 +37,18 @@ void run_algorithm(const int run, const Parameters* params, const int seed, vect
             }
 
             delete lahc;
+            break;
+        }
+        case Algorithm::MA: {
+            const auto ma = new Ma(seed, instance, preprocessor);
+            const double final_cost = ma->run();
+
+            #pragma omp critical
+            {
+                perf_of_trials[run - 1] = final_cost;
+            }
+
+            delete ma;
             break;
         }
         case Algorithm::TWOSTAGEALNS: {

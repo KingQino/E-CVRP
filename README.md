@@ -1,6 +1,6 @@
 # E-CVRP
 
-This repository contains C++ implementations for solving the Electric Capacitated Vehicle Routing Problem (E-CVRP), including bilevel LAHC and a two-stage upper-level ALNS with lower-level charging refinement.
+This repository contains C++ implementations for solving the Electric Capacitated Vehicle Routing Problem (E-CVRP), including bilevel late acceptance hill climbing (B-LAHC), a budget-aware bilevel memetic algorithm (BA-BMA), and a two-stage upper-level ALNS with lower-level charging refinement.
 
 ## Quick Start
 
@@ -48,6 +48,7 @@ The repository includes WCCI2020, WCCI2020 extension, and EVRPTW-derived instanc
   title={Bilevel Late Acceptance Hill Climbing for the Electric Capacitated Vehicle Routing Problem},
   author={Qin, Yinghao and Bazargani, Mosab and Burke, Edmund K and Coello, Carlos A Coello and Song, Zhongmin and Chen, Jun},
   journal={arXiv preprint arXiv:2604.13013},
+  note={Under review at IEEE Transactions on Intelligent Transportation Systems},
   year={2026}
 }
 
@@ -55,6 +56,14 @@ The repository includes WCCI2020, WCCI2020 extension, and EVRPTW-derived instanc
   title={Instance-Aware Parameter Configuration in Bilevel Late Acceptance Hill Climbing for the Electric Capacitated Vehicle Routing Problem},
   author={Qin, Yinghao and Wang, Xinwei and Bazargani, Mosab and Chen, Jun},
   journal={arXiv preprint arXiv:2605.00572},
+  note={Accepted at the IEEE Congress on Evolutionary Computation (CEC)},
+  year={2026}
+}
+
+@article{qin2026budget,
+  title={A Budget-Aware Bilevel Memetic Algorithm for the Electric Capacitated Vehicle Routing Problem},
+  author={Qin, Yinghao and Zhang, Fangfang and Song, Zhongmin and Kim, Eun-Seok and Chen, Jun},
+  note={Under review at IEEE Transactions on Evolutionary Computation},
   year={2026}
 }
 ```

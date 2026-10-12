@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <numeric>
 #include <filesystem>
+#include <cstdint>
 
 
 class Case {
@@ -37,11 +38,16 @@ public:
     [[nodiscard]] double compute_total_distance(const std::vector<int>& route) const;        // return the total distance of the given route
     [[nodiscard]] std::vector<int> compute_demand_sum_per_route(const std::vector<std::vector<int>>& routes) const;
     [[nodiscard]] inline int get_customer_demand_(const int customer) const { return demand_[customer]; } // returns the customer demand
-    [[nodiscard]] inline double get_evals() const { return evals_; }		// returns the number of evaluations
+    // Evaluation budget: one full-solution evaluation = problem_size_ distance calls, one arc access = 1 call.
+    // Only an integer counter is updated on the hot path; evaluations are derived from it on demand.
+    [[nodiscard]] inline double get_evals() const {		// returns the number of evaluations
+        return problem_size_ > 0 ? static_cast<double>(distance_calls_) / static_cast<double>(problem_size_) : 0.0;
+    }
+    [[nodiscard]] inline std::uint64_t get_distance_calls() const { return distance_calls_; } // exact budget counter in distance calls
     [[nodiscard]] inline double get_distance(const int from, const int to) {			// returns the distance
         // adds partial evaluation to the overall fitness evaluation count
         // It can be used when local search is used and a whole evaluation is not necessary
-        evals_ += eval_increment_;
+        ++distance_calls_;
         return distances_[from][to];
     }
 
@@ -60,8 +66,7 @@ public:
     double energy_consumption_rate_{};      // energy consumption rate
     double optimum_{};                      // known optimum value of the problem, if available
     double** distances_{};                  // distance matrix
-    double evals_{};                        // number of evaluations used
-    double eval_increment_{};               // cached increment for get_distance() eval accounting
+    std::uint64_t distance_calls_{};        // evaluation budget used, in distance calls (evals = distance_calls_ / problem_size_)
     std::vector<int> demand_;                    // size = num_customer_ + 1
     std::vector<std::pair<double, double>> positions_;// coordinates of the nodes
 

@@ -18,13 +18,18 @@ The solver is organized around a bilevel view of E-CVRP:
 
 - `Initializer`: constructs initial route sets using split, greedy sequential, Hien-style clustering, or direct encoding methods.
 - `Leader`: improves route structures while enforcing vehicle-capacity feasibility and ignoring charging decisions.
-- `LeaderSingle`: performs single-operator neighbourhood exploration for LAHC.
+- `LeaderSingle`: performs single-operator neighbourhood exploration for B-LAHC.
+- `MaLeader`: MA upper-level local search, an eight-neighbourhood RVND with resumable sessions (weak probe, then continuation to the medium or strong action caps) plus unrestricted RVND to a local optimum, and failure caches.
+- `LocalSearchAllocationRunner` / `OnlineActionLearner`: allocate the MA local-search action (`LocalSearchAction`: weak, medium, strong) per individual (random, matched-random, or online LinUCB policies).
+- `EliteUnrestrictedController`: MA credit account that lets one unfinished strong-action individual per generation continue with unrestricted RVND.
+- `MaReproduction`: MA parent pool, PMX crossover, index-shuffle mutation, and offspring composition.
 - `Follower`: inserts charging stations and evaluates/refines lower-level feasibility for a fixed route structure.
 
 ## Heuristic Layer
 
 - `HeuristicInterface`: common heuristic lifecycle and stopping criteria.
-- `Lahc`: bilevel late acceptance hill climbing.
+- `Lahc`: bilevel late acceptance hill climbing (B-LAHC).
+- `Ma`: budget-aware bilevel memetic algorithm (BA-BMA) with online local-search action allocation and Elite Unrestricted.
 - `TwoStageAlns`: two-stage upper-level ALNS followed by lower-level charging refinement.
 
 ## Statistics Layer

@@ -50,10 +50,12 @@ public:
     double lower_cost{};              // the lower cost of the solution
 
     double biased_fitness{};		  // Biased fitness of the solution
+    bool upper_locally_optimal{};     // MA: true if the routes are a local optimum of the upper-level RVND (reset on any change)
 
     Individual();                                                                   // Constructor: empty individual
     Individual(const Individual& ind);                                              // Copy constructor
     Individual(Case* instance, Preprocessor* preprocessor);                         // Constructor: random individual
+    Individual(Case* instance, Preprocessor* preprocessor, int route_cap, int node_cap); // Constructor: empty individual with explicit capacities (must not exceed the preprocessor's)
     Individual(Case* instance, Preprocessor* preprocessor, const std::vector<std::vector<int>>& routes, double upper_cost,
         const std::vector<int>& demand_sum_per_route);  // Constructor: some delicate methods for initialisation
     ~Individual();

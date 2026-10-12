@@ -8,7 +8,9 @@
 #include<iostream>
 #include<string>
 
-enum class Algorithm { LAHC, TWOSTAGEALNS };
+#include "ma_types.hpp"
+
+enum class Algorithm { LAHC, MA, TWOSTAGEALNS };
 
 struct Parameters {
     // Running parameters
@@ -23,12 +25,27 @@ struct Parameters {
     bool enable_final_refinement; // Enable final follower refinement (default: true)
     int seed;                   // Random seed
 
-    // LAHC parameters (LAHC uses LeaderSingle only)
-    int history_length;                 // LAHC: history length
-    int max_attempts;                   // LAHC: max_attempts determines how many times the neighbourhood (random) will be explored
-    double low_opt_trigger_margin;      // LAHC: margin to trigger lower-level optimisation, >= 1.0
-    double noise_lb;                    // LAHC: The lower bound of noise range for history list value
-    double noise_ub;                    // LAHC: The upper bound of noise range for history list value
+    // LAHC parameters: bilevel late acceptance hill climbing, B-LAHC (LAHC uses LeaderSingle only)
+    int lahc_history_length;            // LAHC: history length
+    int lahc_max_attempts;              // LAHC: how many times the (random) neighbourhood is explored per move
+    double low_opt_trigger_margin;      // LAHC/MA: margin to trigger lower-level optimisation, >= 1.0 (MA: gamma)
+    double lahc_noise_lb;               // LAHC: lower bound of the noise range for history list values
+    double lahc_noise_ub;               // LAHC: upper bound of the noise range for history list values
+
+    // MA parameters: budget-aware bilevel memetic algorithm, BA-BMA
+    int ma_pop_size;                    // MA: population size
+    double ma_mutation_prob;            // MA: probability that an offspring enters mutation
+    double ma_mutation_ind_prob;        // MA: per-gene probability inside the mutation operator
+    int ma_tournament_size;             // MA: upper-parent tournament size
+    LocalSearchPolicy ma_ls_policy;     // MA: local-search allocation policy
+    LocalSearchAction ma_static_action; // MA: action applied to every individual by the static policy
+    bool ma_static_unrestricted;        // MA: static policy runs unrestricted RVND instead (original BMA baseline)
+    double ma_parent_pool_ratio;        // MA: parent-pool size relative to population size
+    double ma_verified_upper_ratio;     // MA: share of x* x parent-pool offspring (x*: best complete solution so far)
+    double ma_pure_immigrant_ratio;     // MA: share of pure random-immigrant offspring
+    double ma_unrestricted_credit_rho;  // MA: Elite Unrestricted credit earned per ordinary local-search distance call (rho)
+    LocalSearchDepthProfile ma_ls_depth;// MA: coupled weak/medium/strong depth profile
+    double ma_action_cost_weight;       // MA: weight of the predicted-cost term in the online learner's action score
 
     // TwoStageAlns parameters
     double alns_start_deviation;        // TwoStageAlns: initial record-deviation acceptance gap
@@ -54,11 +71,25 @@ struct Parameters {
             enable_final_refinement(true),
             seed(0) {
 
-        history_length = 5'723;
-        max_attempts = 60;
-        low_opt_trigger_margin = 1.05;   // Relative cost margin (≥ 1.0) within which the candidate solution must fall to trigger lower-level optimisation
-        noise_lb = 0.95;
-        noise_ub = 1.05;
+        lahc_history_length = 5'723;
+        lahc_max_attempts = 60;
+        low_opt_trigger_margin = 1.05;   // Relative cost margin (>= 1.0) within which the candidate solution must fall to trigger lower-level optimisation
+        lahc_noise_lb = 0.95;
+        lahc_noise_ub = 1.05;
+
+        ma_pop_size = 100;
+        ma_mutation_prob = 0.5;
+        ma_mutation_ind_prob = 0.2;
+        ma_tournament_size = 2;
+        ma_ls_policy = LocalSearchPolicy::OnlineIndividual;
+        ma_static_action = LocalSearchAction::Strong;
+        ma_static_unrestricted = false;
+        ma_parent_pool_ratio = 0.10;
+        ma_verified_upper_ratio = 0.05;
+        ma_pure_immigrant_ratio = 0.10;
+        ma_unrestricted_credit_rho = 0.20;
+        ma_ls_depth = LocalSearchDepthProfile::D5;
+        ma_action_cost_weight = 0.02;
 
         alns_start_deviation = 0.0167;
         alns_decay = 0.99;

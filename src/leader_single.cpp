@@ -12,7 +12,7 @@ LeaderSingle::LeaderSingle(std::mt19937& engine, Case *instance, Preprocessor *p
     : Leader(engine, instance, preprocessor),
       op_selector(0, kNumOps - 1) {
 
-    this->max_attempts = preprocessor->params.max_attempts;
+    this->max_attempts = preprocessor->params.lahc_max_attempts;
     this->enable_op_profile = preprocessor->params.enable_logging;
 
     ops = {

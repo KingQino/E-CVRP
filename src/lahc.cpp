@@ -14,7 +14,7 @@ Lahc::Lahc(const int seed, Case* instance, Preprocessor* preprocessor)
     iter = 0L;
     iter_global = 0L;
     idle_iter = 0L;
-    history_length = static_cast<long>(preprocessor->params.history_length);
+    history_length = static_cast<long>(preprocessor->params.lahc_history_length);
     num_successful_moves_per_history = 0.;
     ratio_successful_moves = 1.0;
     low_opt_trigger_margin = preprocessor->params.low_opt_trigger_margin;
@@ -22,7 +22,7 @@ Lahc::Lahc(const int seed, Case* instance, Preprocessor* preprocessor)
     current = nullptr;
     global_best_upper_cost = std::numeric_limits<double>::max();
     global_best = make_unique<Individual>(instance, preprocessor);
-    history_noise = uniform_real_distribution(preprocessor->params.noise_lb, preprocessor->params.noise_ub); // Noise for history list
+    history_noise = uniform_real_distribution(preprocessor->params.lahc_noise_lb, preprocessor->params.lahc_noise_ub); // Noise for history list
     restart_idx = 0;
     prof_leader_greedy_sec = 0.0;
     prof_leader_neigh_sec = 0.0;

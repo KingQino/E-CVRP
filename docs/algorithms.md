@@ -2,7 +2,8 @@
 
 ## Implemented Methods
 
-- `Lahc`: bilevel late acceptance hill climbing using `LeaderSingle` for upper-level neighbourhood exploration and `Follower` for lower-level charging decisions.
+- `Lahc`: bilevel late acceptance hill climbing (B-LAHC), using `LeaderSingle` for upper-level neighbourhood exploration and `Follower` for lower-level charging decisions.
+- `Ma`: budget-aware bilevel memetic algorithm (BA-BMA). A bilevel memetic algorithm that assigns each individual an upper-level local-search action (`weak`, `medium` or `strong`, i.e. a different computational budget) through an online adaptation mechanism.
 - `TwoStageAlns`: upper-level adaptive large neighbourhood search with random, geographic, and history-based destroy methods, followed by lower-level charging refinement.
 
 ## Stopping Criteria
@@ -43,7 +44,7 @@ where `v` is set to:
 | BACO     | Max Time      | C++           | Yes            |
 | CBACO-I  | Max Time      | C++           | Yes            |
 | TAMLS    | Max Time      | C++           | No             |
-| CBMA     | Max Time      | C++           | Yes            |
+| BMA      | Max Time      | C++           | Yes            |
 | B-LAHC   | Both          | C++           | Yes            |
 
 References and code links:
@@ -55,6 +56,6 @@ References and code links:
 - BACO: [paper](https://ieeexplore.ieee.org/document/9409782), [original code](https://github.com/Flyki/CEVRP), [modified code](https://github.com/KingQino/CBACO-Yahui/)
 - CBACO-I: [paper](https://ieeexplore.ieee.org/document/9684529), [original code](https://github.com/Flyki/CEVRP), [modified code](https://github.com/KingQino/CBACO-Yahui/)
 - TAMLS: [paper](https://ieeexplore.ieee.org/document/10382457)
-- CBMA: [paper](https://ieeexplore.ieee.org/abstract/document/10611804), [code](https://github.com/KingQino/CEVRP-with-Adaptive-Selection)
+- BMA: [paper](https://ieeexplore.ieee.org/abstract/document/10611804), [code](https://github.com/KingQino/CEVRP-with-Adaptive-Selection)
 
 The modified reference code used for comparisons applies uniform stopping criteria and enhanced statistical logging.

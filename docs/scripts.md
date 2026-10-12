@@ -14,6 +14,7 @@ Common entry points:
 Supported algorithm folders:
 
 - `LAHC`
+- `MA`
 - `TWOSTAGEALNS`
 
 ## Per-Run Logs
@@ -28,7 +29,15 @@ Expected files:
 
 - `evols.[Instance].csv`: evolution trace;
 - `solution.[Instance].txt`: final objective and route output;
-- `profile.[Instance].txt`: lightweight timing profile.
+- `profile.[Instance].txt`: lightweight timing profile (LAHC, TwoStageAlns).
+
+MA additionally writes:
+
+- `local-search-operators.tsv`: per-generation calls, accepts, evaluations, upper gain and gamma crossings of the eight RVND operators;
+- `local-search-allocation.tsv`: 10-generation totals per local-search action (non-static policies only);
+- `elite-local-search.tsv`: 10-generation Elite Unrestricted totals (`online` policy only);
+- `search-budget.tsv`: 10-generation split of evaluations into ordinary local search, Elite Unrestricted, follower and other work;
+- `run-configuration.tsv`: gamma, local-search settings, unrestricted credit rho, depth profile and learner action-cost weight of the run.
 
 Multi-trial summaries are written as:
 

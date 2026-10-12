@@ -86,6 +86,7 @@ Individual::Individual(const Individual &ind) {
     this->upper_cost = ind.upper_cost;
     this->lower_cost = ind.lower_cost;
     this->biased_fitness = ind.biased_fitness;
+    this->upper_locally_optimal = ind.upper_locally_optimal;
     this->routes = new int *[ind.route_cap];
     for (int i = 0; i < ind.route_cap; ++i) {
         this->routes[i] = new int[ind.node_cap];
@@ -97,12 +98,18 @@ Individual::Individual(const Individual &ind) {
     memcpy(this->demand_sum_per_route, ind.demand_sum_per_route, sizeof(int) * ind.route_cap);
 }
 
-Individual::Individual(Case* instance, Preprocessor *preprocessor) {
+Individual::Individual(Case* instance, Preprocessor *preprocessor)
+: Individual(instance, preprocessor, preprocessor->route_cap_, preprocessor->node_cap_) {
+}
+
+Individual::Individual(Case* instance, Preprocessor* preprocessor, const int route_cap, const int node_cap) {
+    assert(route_cap <= preprocessor->route_cap_ && node_cap <= preprocessor->node_cap_
+           && "Individual capacities must not exceed the follower buffers.");
     this->instance = instance;
     this->preprocessor = preprocessor;
 
-    this->route_cap = preprocessor->route_cap_;
-    this->node_cap = preprocessor->node_cap_;
+    this->route_cap = route_cap;
+    this->node_cap = node_cap;
     this->routes = new int *[route_cap];
     for (int i = 0; i < route_cap; ++i) {
         this->routes[i] = new int[node_cap];
@@ -141,6 +148,7 @@ Individual& Individual::operator=(const Individual& other) {
     this->upper_cost = other.upper_cost;
     this->lower_cost = other.lower_cost;
     this->biased_fitness = other.biased_fitness;
+    this->upper_locally_optimal = other.upper_locally_optimal;
     for (int i = 0; i < route_cap; ++i) {
         memcpy(this->routes[i], other.routes[i], sizeof(int) * node_cap);
     }
@@ -160,6 +168,7 @@ void Individual::clean() {
     this->num_routes = 0;
     this->upper_cost = 0.;
     this->lower_cost = std::numeric_limits<double>::max();
+    this->upper_locally_optimal = false;
 }
 
 void Individual::load_routes(const std::vector<std::vector<int>>& routes, const double upper_cost,
@@ -204,6 +213,7 @@ void swap(Individual& a, Individual& b) noexcept {
     swap(a.upper_cost, b.upper_cost);
     swap(a.lower_cost, b.lower_cost);
     swap(a.biased_fitness, b.biased_fitness);
+    swap(a.upper_locally_optimal, b.upper_locally_optimal);
 }
 
 std::ostream& operator<<(std::ostream& os, const Individual& individual) {
