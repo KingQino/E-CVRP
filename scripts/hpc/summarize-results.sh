@@ -3,8 +3,10 @@
 # Works on partial results: unfinished instances are reported and marked NA.
 #
 #   runs-all.tsv       experiment, algorithm, dataset, instance, seed, objective (one row per run)
-#   objective-all.tsv  experiment, algorithm, dataset, instance, runs, min, mean, std, max
-#   objective-wide.tsv instance, dataset, then <id>_min / <id>_mean / <id>_std per experiment
+#   objective-all.tsv  experiment, algorithm, instance, runs, min, mean, std, max
+#   objective-wide.tsv instance, then <id>_min / <id>_mean / <id>_std per experiment
+#   objective-legacy-<id>.txt  per experiment, in instances.txt order: three lines per instance
+#                      (min, mean, std) with two decimals, NA if not all runs finished
 #   ma-search-budget.tsv  MA only: evaluation split (ordinary LS, Elite Unrestricted, follower, other) per instance
 #
 # The objective is the first line of stats/<ALG>/<instance>/<seed>/solution.<instance>.txt (5 decimals).
@@ -62,9 +64,9 @@ for id in "${ids[@]}"; do
 done
 
 # Per experiment and instance: runs, min, mean, sample std, max over the finished runs.
-awk -F '\t' 'BEGIN { OFS = "\t"; print "experiment", "algorithm", "dataset", "instance", "runs", "min", "mean", "std", "max" }
+awk -F '\t' 'BEGIN { OFS = "\t"; print "experiment", "algorithm", "instance", "runs", "min", "mean", "std", "max" }
     NR > 1 {
-        key = $1 FS $2 FS $3 FS $4
+        key = $1 FS $2 FS $4
         if (!(key in seen)) { seen[key] = 1; order[++size] = key }
         if ($6 == "NA") next
         # Welford update (stable when all runs are equal)
@@ -86,16 +88,16 @@ awk -F '\t' 'BEGIN { OFS = "\t"; print "experiment", "algorithm", "dataset", "in
 # Wide table: one row per instance, min/mean/std columns per experiment (NA if not all runs finished).
 awk -F '\t' -v ids="$(printf '%s ' "${ids[@]}")" -v runs="$runs_per_instance" 'BEGIN { OFS = "\t"; m = split(ids, id, " ") }
     NR > 1 {
-        if (!($4 in seen)) { seen[$4] = 1; order[++size] = $4; dataset[$4] = $3 }
-        complete = ($5 == runs)
-        mn[$1, $4] = complete ? $6 : "NA"; me[$1, $4] = complete ? $7 : "NA"; sd[$1, $4] = complete ? $8 : "NA"
+        if (!($3 in seen)) { seen[$3] = 1; order[++size] = $3 }
+        complete = ($4 == runs)
+        mn[$1, $3] = complete ? $5 : "NA"; me[$1, $3] = complete ? $6 : "NA"; sd[$1, $3] = complete ? $7 : "NA"
     }
     END {
-        header = "instance" OFS "dataset"
+        header = "instance"
         for (j = 1; j <= m; ++j) header = header OFS id[j] "_min" OFS id[j] "_mean" OFS id[j] "_std"
         print header
         for (i = 1; i <= size; ++i) {
-            inst = order[i]; line = inst OFS dataset[inst]
+            inst = order[i]; line = inst
             for (j = 1; j <= m; ++j) {
                 k = id[j] SUBSEP inst
                 line = line OFS ((k in mn) ? mn[k] : "NA") OFS ((k in me) ? me[k] : "NA") OFS ((k in sd) ? sd[k] : "NA")
@@ -105,9 +107,34 @@ awk -F '\t' -v ids="$(printf '%s ' "${ids[@]}")" -v runs="$runs_per_instance" 'B
     }
 ' "$objective_all" > "$objective_wide"
 
+# Legacy format (as in CEVRP-with-Adaptive-Selection): min, mean, std per instance, one value per line.
+legacy_files=()
+for id in "${ids[@]}"; do
+    legacy="$results_dir/objective-legacy-$id.txt"
+    awk -F '\t' -v id="$id" -v runs="$runs_per_instance" '
+        NR == FNR {
+            if (FNR > 1 && $1 == id && $6 != "NA") {
+                k = $4; n[k]++; d = $6 - mu[k]; mu[k] += d / n[k]; m2[k] += d * ($6 - mu[k])
+                if (!(k in mn) || $6 < mn[k]) mn[k] = $6
+            }
+            next
+        }
+        {
+            k = $0
+            if (n[k] == runs) {
+                printf "%.2f\n%.2f\n%.2f\n", mn[k], mu[k], (runs > 1 ? sqrt(m2[k] / (runs - 1)) : 0)
+            } else {
+                print "NA"; print "NA"; print "NA"
+            }
+        }
+    ' "$runs_all" <(for name in "${cases[@]}"; do instance_stem "$name"; done) > "$legacy"
+    legacy_files+=("$legacy")
+done
+
 echo "Wrote $runs_all"
 echo "Wrote $objective_all"
 echo "Wrote $objective_wide"
+printf 'Wrote %s\n' "${legacy_files[@]}"
 echo "Wrote $budget_all"
 if (( incomplete > 0 )); then
     echo "Warning: $incomplete runs have no solution file yet (marked NA); see check-progress.sh" >&2

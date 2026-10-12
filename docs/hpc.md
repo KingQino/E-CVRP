@@ -13,40 +13,24 @@ That is 3 algorithms × 133 instances × 10 runs = 3,990 runs in 399 array tasks
 
 | Step | Where | Command |
 |---|---|---|
-| 1. Push the code | your computer | `git push origin <branch>` |
-| 2. Clone | cluster | `git clone -b <branch> git@github.com:KingQino/E-CVRP.git source` |
-| 3. Build and prepare | cluster | `./source/scripts/hpc/setup-all.sh` |
-| 4. Submit | cluster | `./source/scripts/hpc/submit-all.sh` |
-| 5. Monitor and resubmit | cluster | `./source/scripts/hpc/check-progress.sh [--resubmit]` |
-| 6. Summarize | cluster | `./source/scripts/hpc/summarize-results.sh` |
-| 7. Download | your computer | `./scripts/hpc/download-results.sh [--summary]` |
+| 1. Clone | cluster | `git clone -b <branch> git@github.com:KingQino/E-CVRP.git source` |
+| 2. Build and prepare | cluster | `./source/scripts/hpc/setup-all.sh` |
+| 3. Submit | cluster | `./source/scripts/hpc/submit-all.sh` |
+| 4. Monitor and resubmit | cluster | `./source/scripts/hpc/check-progress.sh [--resubmit]` |
+| 5. Summarize | cluster | `./source/scripts/hpc/summarize-results.sh` |
+| 6. Download | your computer | `./scripts/hpc/download-results.sh [--summary]` |
 
-Steps 3 and 4 can be done in one go with `./source/scripts/hpc/run-all.sh`.
+Steps 2 and 3 can be done in one go with `./source/scripts/hpc/run-all.sh`.
 
-## 1. Push the Code
+## 1. Clone on the Cluster
 
-The cluster clones from GitHub, so commit and push the branch you want to run first. The examples below use the `broker` branch:
-
-```shell
-git checkout broker
-git add -A
-git commit -m "<message>"
-git push origin broker
-```
-
-Every experiment directory records the branch, commit and any local changes in `source-commit.txt`, so you can trace each result back to the code that produced it.
-
-## 2. Clone on the Cluster
-
-Log in and go to the directory that should hold the experiment (any empty directory, preferably on scratch storage). Clone the repository into `source/` there. All later commands on the cluster are run from this directory:
+Log in and go to the directory that should hold the experiment (any empty directory). Clone the repository into `source/` there. All later commands on the cluster are run from this directory:
 
 ```shell
 ssh <username>@login.hpc.qmul.ac.uk
 cd <experiment directory>
 git clone -b broker git@github.com:KingQino/E-CVRP.git source
 ```
-
-Cloning over SSH needs an SSH key on the cluster that is registered with GitHub. Without one, use `https://github.com/KingQino/E-CVRP.git`.
 
 The scripts treat the directory that contains `source/` as the experiment root, so all results stay next to the clone. After the runs, it looks like this:
 
@@ -69,7 +53,7 @@ The scripts treat the directory that contains `source/` as the experiment root, 
 └── results/                        tables from summarize-results.sh
 ```
 
-## 3. Build and Prepare
+## 2. Build and Prepare
 
 Run this on the login node:
 
@@ -95,7 +79,7 @@ Each array task runs:
 ./Run -alg <algorithm> -ins <instance> -stp 0 -mth 1 -log 1 <arguments>
 ```
 
-## 4. Submit
+## 3. Submit
 
 ```shell
 ./source/scripts/hpc/submit-all.sh          # all experiments
@@ -112,7 +96,7 @@ sacct -j <job_id> --format=JobID,State,Elapsed,MaxRSS
 tail -f MA/build/log/ecvrp-MA-<job_id>_<index>.out
 ```
 
-## 5. Check Progress and Resubmit
+## 4. Check Progress and Resubmit
 
 ```shell
 ./source/scripts/hpc/check-progress.sh
@@ -140,7 +124,7 @@ ECVRP_TIME_LIMIT=12:00:00 ./source/scripts/hpc/setup-one.sh MA
 ./source/scripts/hpc/check-progress.sh --resubmit MA
 ```
 
-## 6. Summarize
+## 5. Summarize
 
 ```shell
 ./source/scripts/hpc/summarize-results.sh
@@ -153,11 +137,12 @@ This writes tab-separated tables to `./results/`. It can be run on partial resul
 | `runs-all.tsv` | one row per run: experiment, algorithm, dataset, instance, seed, objective |
 | `objective-all.tsv` | per experiment and instance: runs, min, mean, std, max |
 | `objective-wide.tsv` | one row per instance with `<id>_min`, `<id>_mean` and `<id>_std` for each experiment (for comparison tables) |
+| `objective-legacy-<id>.txt` | per experiment, in `instances.txt` order: min, mean and std of each instance on three lines, two decimals (`NA` if not all 10 runs finished), as in CEVRP-with-Adaptive-Selection |
 | `ma-search-budget.tsv` | MA only: evaluations spent on ordinary local search, Elite Unrestricted, the follower and other work, summed over the 10 runs |
 
-The objective is the first line of each `solution.<instance>.txt`, which has 5 decimals. The `stats.<instance>.evrp` files written by the solver round to 2 decimals. Use `runs-all.tsv` for paired statistical tests, because the seeds are the same across algorithms.
+The objective is the first line of each `solution.<instance>.txt`, which has 5 decimals; the TSV tables keep 5 decimals and the legacy files round to 2. The `stats.<instance>.evrp` files written by the solver round to 2 decimals. Use `runs-all.tsv` for paired statistical tests, because the seeds are the same across algorithms.
 
-## 7. Download
+## 6. Download
 
 On your own computer, from your E-CVRP clone. `ECVRP_REMOTE_ROOT` is the full path of the experiment directory on the cluster (run `pwd` there to get it):
 
@@ -227,5 +212,3 @@ Max-evals runs are short. Single runs on the largest instance, X-n1001-k43, meas
 | TwoStageAlns | 2 min | small |
 
 Smaller instances finish much faster. MA's memory peaks on X-n916-k207 at about 0.3 GB per run, or about 3 GB per task.
-
-The defaults leave a wide margin: 4 hours and 1 GB per CPU (10 GB per task). Shorter limits are usually scheduled sooner, so lower `ECVRP_TIME_LIMIT` if your cluster favours short jobs. For max-time runs, raise it above the stopping time instead. If tasks hit the limit, raise it for that experiment and resubmit the missing indices (step 5).
