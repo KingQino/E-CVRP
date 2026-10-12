@@ -1,0 +1,4 @@
+id	algorithm	arguments
+LAHC	lahc	-lahc_his_len 5723 -lahc_max_attempts 60
+MA	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.20 -ma_ls_depth d5 -ma_action_cost_weight 0.02
+TWOSTAGEALNS	twostagealns	

@@ -30,12 +30,30 @@ For all command-line options:
 ./build/Run -h
 ```
 
+## Running on HPC
+
+To run all three algorithms on the 133 instances on a Slurm cluster (10 runs per instance, max-evals), use the scripts in [`scripts/hpc/`](scripts/hpc):
+
+```shell
+# on the cluster, from the directory that should hold the experiment (results are written next to source/)
+git clone -b broker git@github.com:KingQino/E-CVRP.git source
+./source/scripts/hpc/run-all.sh              # build, prepare and submit one Slurm array per algorithm
+./source/scripts/hpc/check-progress.sh       # finished instances; add --resubmit to rerun missing ones
+./source/scripts/hpc/summarize-results.sh    # result tables in results/
+
+# on your computer
+ECVRP_REMOTE=<user>@<login-node> ECVRP_REMOTE_ROOT=<experiment directory on the cluster> ./scripts/hpc/download-results.sh --summary
+```
+
+See [HPC Experiments](docs/hpc.md) for details.
+
 ## Documentation
 
 - [Setup and Usage](docs/setup.md): build details, run examples, parameters, and instance names.
 - [Architecture](docs/architecture.md): data structures, leader/follower interaction, and solver layers.
 - [Algorithms](docs/algorithms.md): implemented methods, stopping criteria, and benchmark context.
 - [Scripts and Experiments](docs/scripts.md): benchmark scripts, log layout, and experiment data notes.
+- [HPC Experiments](docs/hpc.md): cloning on a cluster, submitting Slurm array jobs, and collecting results.
 
 ## Data
 

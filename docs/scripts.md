@@ -1,5 +1,9 @@
 # Scripts and Experiments
 
+## HPC Scripts
+
+The scripts in `scripts/hpc/` run all algorithms on all instances as Slurm array jobs and collect the results into tables. See [HPC Experiments](hpc.md).
+
 ## Benchmark Scripts
 
 Benchmark scripts live under `stats/[Algorithm]/` when experiment outputs are generated.
