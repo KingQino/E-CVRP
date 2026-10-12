@@ -170,3 +170,27 @@ TEST(FollowerRefineTest, RefineIsNeverWorseThanTheStandardFollower) {
         }
     }
 }
+
+// R103-10: the tour is 143.86 long with range 60.63, so floor = 2 and floor + 1 = 3 stations.
+// Two stations are feasible (170.22) but three are much cheaper (160.41, the instance optimum).
+// The in-search follower must evaluate both counts instead of stopping at the first feasible one.
+TEST(FollowerRunTest, SimpleEnumerationComparesFloorAndFloorPlusOneStations) {
+    const fs::path data_path = fs::path(__FILE__).parent_path().parent_path() / "data";
+    Parameters params;
+    Case instance(data_path.string(), "R103-10.evrp");
+    Preprocessor preprocessor(instance, params);
+    Follower follower(&instance, &preprocessor);
+
+    const std::vector<std::vector<int>> routes = {{0, 4, 7, 3, 6, 10, 1, 9, 5, 8, 2, 0}};
+    const double upper_cost = instance.compute_total_distance(routes);
+    const std::vector<int> demand_sums = instance.compute_demand_sum_per_route(routes);
+
+    Individual evaluated(&instance, &preprocessor, routes, upper_cost, demand_sums);
+    follower.run(&evaluated);                       // evaluate-only path used during the search
+    EXPECT_NEAR(evaluated.lower_cost, 160.41224, 1e-4);
+
+    Individual with_routes(&instance, &preprocessor, routes, upper_cost, demand_sums);
+    follower.run_with_variables(&with_routes);      // path that also builds the charged route
+    EXPECT_NEAR(with_routes.lower_cost, 160.41224, 1e-4);
+    EXPECT_EQ(check_charged_route(instance, preprocessor, follower, 0, routes[0], with_routes.lower_cost), 3);
+}

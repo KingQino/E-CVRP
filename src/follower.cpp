@@ -269,6 +269,7 @@ double Follower::eval_simple_enum_cost(const int* route, const int length) const
 
     double final_cost = std::numeric_limits<double>::max();
 
+    // Same as insert_station_by_simple_enum: evaluate floor and floor + 1 stations, keep the cheaper.
     for (int k = lower_bound; k <= upper_bound; ++k) {
         recursive_charging_placement(
             0, k,
@@ -280,10 +281,6 @@ double Follower::eval_simple_enum_cost(const int* route, const int length) const
             length,
             temp_accumulated_distance
         );
-
-        if (final_cost != std::numeric_limits<double>::max()) {
-            break;
-        }
     }
 
     return (final_cost != std::numeric_limits<double>::max()) ? final_cost : -1.0;
@@ -397,7 +394,11 @@ double Follower::insert_station_by_simple_enum(int* repaired_route, int& repaire
 
     double final_cost = numeric_limits<double>::max();
 
+    // Try both floor and floor + 1 stations and keep the cheaper placement (final_cost carries the best
+    // over both counts). Stopping at the first feasible count can miss a much cheaper placement with one
+    // more station (e.g. R103-10: 2 stations 170.22 vs 3 stations 160.41).
     for (int i = lower_bound; i <= upper_bound; ++i) {
+        const double cost_before = final_cost;
         recursive_charging_placement(
             0,
             i,
@@ -409,7 +410,7 @@ double Follower::insert_station_by_simple_enum(int* repaired_route, int& repaire
             length,
             temp_accumulated_distance);
 
-        if (final_cost != numeric_limits<double>::max()) {
+        if (final_cost < cost_before) {
             // Build repaired route with inserted stations
             int current_index = 0;
             int idx = 0;
@@ -431,8 +432,6 @@ double Follower::insert_station_by_simple_enum(int* repaired_route, int& repaire
             const int remaining_elements_to_copy = length - idx;
             memcpy(&repaired_route[current_index], &temp_route[idx], remaining_elements_to_copy * sizeof(int));
             repaired_length = current_index + remaining_elements_to_copy;
-
-            break;
         }
     }
 
