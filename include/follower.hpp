@@ -59,7 +59,7 @@ public:
     void export_individual(Individual* ind) const;   // export the individual from the follower, i.e., update lower_cost
     void run(Individual* ind);                       // run the follower decision for the given complete solution
     void run(const PartialSolution* partial_sol);    // run the follower decision for the given partial solution
-    void refine(Individual* ind);                    // refine the final solution by enumerating all possible charging visits
+    void refine(Individual* ind);                    // refine the final solution with the optimal charging visits per route
     void run_with_variables(Individual* ind);        // run the follower decision with intermediate variables (e.g., lower_routes)
 
     // Evaluate-only (do NOT write stations into the given route)
@@ -70,9 +70,8 @@ public:
     double insert_station_by_remove_enum(int* repaired_route, int& repaired_length) const;
     void recursive_charging_placement(int m_len, int n_len, int* chosen_pos, int* best_chosen_pos, double& final_cost,
         int cur_upper_bound, const int* route, int length, const double* accumulated_distance) const;
+    // Exact charging placement for the final refinement (dynamic programming over station count, edge and station).
     double insert_station_by_all_enumeration(int* repaired_route, int& repaired_length) const;
-    ChargingMeta try_enumerate_n_stations_to_route(int m_len, int n_len, int* chosen_sta, int* chosen_pos, double& cost,
-        int cur_upper_bound, const int* route, int length, const std::vector<double>& accumulated_distance) const;
 
     friend std::ostream& operator<<(std::ostream& os, const Follower& follower);
 };
