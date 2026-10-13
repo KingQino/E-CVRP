@@ -4,6 +4,7 @@
 
 #include "follower.hpp"
 #include <algorithm>
+#include <cmath>
 #include <list>
 #include <stack>
 #include <cassert>
@@ -264,8 +265,9 @@ double Follower::eval_simple_enum_cost(const int* route, const int length) const
         return total_distance;
     }
 
-    const int lower_bound = static_cast<int>(total_distance / preprocessor->max_cruise_distance_);
-    const int upper_bound = static_cast<int>(total_distance / preprocessor->max_cruise_distance_ + 1);
+    // Station counts as in the paper: l_min = ceil(f_U / (Q_b / h)) - 1, then l_min and l_min + 1.
+    const int lower_bound = static_cast<int>(std::ceil(total_distance / preprocessor->max_cruise_distance_)) - 1;
+    const int upper_bound = lower_bound + 1;
 
     double final_cost = std::numeric_limits<double>::max();
 
@@ -389,8 +391,9 @@ double Follower::insert_station_by_simple_enum(int* repaired_route, int& repaire
 
 
     // Compute lower and upper bound for number of stations
-    const int lower_bound = static_cast<int>(total_distance / preprocessor->max_cruise_distance_);
-    const int upper_bound = static_cast<int>(total_distance / preprocessor->max_cruise_distance_ + 1);
+    // Station counts as in the paper: l_min = ceil(f_U / (Q_b / h)) - 1, then l_min and l_min + 1.
+    const int lower_bound = static_cast<int>(std::ceil(total_distance / preprocessor->max_cruise_distance_)) - 1;
+    const int upper_bound = lower_bound + 1;
 
     double final_cost = numeric_limits<double>::max();
 
