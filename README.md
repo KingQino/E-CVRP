@@ -66,7 +66,6 @@ The repository includes WCCI2020, WCCI2020 extension, and EVRPTW-derived instanc
   title={Bilevel Late Acceptance Hill Climbing for the Electric Capacitated Vehicle Routing Problem},
   author={Qin, Yinghao and Bazargani, Mosab and Burke, Edmund K and Coello, Carlos A Coello and Song, Zhongmin and Chen, Jun},
   journal={arXiv preprint arXiv:2604.13013},
-  note={Under review at IEEE Transactions on Intelligent Transportation Systems},
   year={2026}
 }
 
