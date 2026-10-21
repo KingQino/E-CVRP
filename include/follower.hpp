@@ -52,6 +52,11 @@ public:
     double* lower_cost_per_route;          // the cost of each route in the lower-level solution
     double lower_cost;                     // the lower cost of the solution, i.e., the total distance of all complete routes
 
+    // Simple enumeration (SE) station counts. false (default): try l_min, then l_min + 1 only if no placement
+    // with l_min stations is feasible (original B-LAHC behaviour, used by LAHC and TwoStageAlns).
+    // true: evaluate both l_min and l_min + 1 and keep the cheaper placement (used by MA).
+    bool se_compare_station_counts = false;
+
     Follower(Case* instance, Preprocessor* preprocessor);
     ~Follower();
 

@@ -271,7 +271,7 @@ double Follower::eval_simple_enum_cost(const int* route, const int length) const
 
     double final_cost = std::numeric_limits<double>::max();
 
-    // Same as insert_station_by_simple_enum: evaluate floor and floor + 1 stations, keep the cheaper.
+    // Same rule as insert_station_by_simple_enum (see se_compare_station_counts).
     for (int k = lower_bound; k <= upper_bound; ++k) {
         recursive_charging_placement(
             0, k,
@@ -283,6 +283,10 @@ double Follower::eval_simple_enum_cost(const int* route, const int length) const
             length,
             temp_accumulated_distance
         );
+
+        if (!se_compare_station_counts && final_cost != std::numeric_limits<double>::max()) {
+            break;  // original behaviour: stop at the first feasible station count
+        }
     }
 
     return (final_cost != std::numeric_limits<double>::max()) ? final_cost : -1.0;
@@ -397,9 +401,10 @@ double Follower::insert_station_by_simple_enum(int* repaired_route, int& repaire
 
     double final_cost = numeric_limits<double>::max();
 
-    // Try both floor and floor + 1 stations and keep the cheaper placement (final_cost carries the best
-    // over both counts). Stopping at the first feasible count can miss a much cheaper placement with one
-    // more station (e.g. R103-10: 2 stations 170.22 vs 3 stations 160.41).
+    // With se_compare_station_counts, both l_min and l_min + 1 stations are tried and the cheaper placement is
+    // kept (final_cost carries the best over both counts); stopping at the first feasible count can miss a much
+    // cheaper placement with one more station (e.g. R103-10: 2 stations 170.22 vs 3 stations 160.41).
+    // Without it, the enumeration stops at the first feasible count (original B-LAHC behaviour).
     for (int i = lower_bound; i <= upper_bound; ++i) {
         const double cost_before = final_cost;
         recursive_charging_placement(
@@ -435,6 +440,10 @@ double Follower::insert_station_by_simple_enum(int* repaired_route, int& repaire
             const int remaining_elements_to_copy = length - idx;
             memcpy(&repaired_route[current_index], &temp_route[idx], remaining_elements_to_copy * sizeof(int));
             repaired_length = current_index + remaining_elements_to_copy;
+        }
+
+        if (!se_compare_station_counts && final_cost != numeric_limits<double>::max()) {
+            break;  // original behaviour: stop at the first feasible station count
         }
     }
 

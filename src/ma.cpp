@@ -127,6 +127,7 @@ Ma::Ma(const int seed, Case* instance, Preprocessor* preprocessor)
 
     initializer = new Initializer(random_engine, instance, preprocessor);
     follower = new Follower(instance, preprocessor);
+    follower->se_compare_station_counts = true;  // MA's SE compares l_min and l_min + 1 stations
 }
 
 Ma::~Ma() {
