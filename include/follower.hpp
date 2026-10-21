@@ -73,6 +73,7 @@ public:
     double eval_remove_enum_cost(const int* route, int length) const;
 
     double insert_station_by_simple_enum(int* repaired_route, int& repaired_length) const;
+    int best_feasible_station_charged(int from, int to, double max_dis) const;  // RE station choice, reads charged
     double insert_station_by_remove_enum(int* repaired_route, int& repaired_length) const;
     void recursive_charging_placement(int m_len, int n_len, int* chosen_pos, int* best_chosen_pos, double& final_cost,
         int cur_upper_bound, const int* route, int length, const double* accumulated_distance) const;
