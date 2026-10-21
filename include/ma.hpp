@@ -41,6 +41,7 @@
 #include "ma_local_search_allocation.hpp"
 #include "ma_reproduction.hpp"
 #include "stats_interface.hpp"
+#include "stn_logger.hpp"
 
 #include <array>
 #include <cstdint>
@@ -104,6 +105,7 @@ public:
 
     Initializer* initializer;
     Follower* follower;
+    std::unique_ptr<StnLogger> stn_logger;      // STN trajectory log of the generation-best upper individual (nullptr when off)
 
     ReproductionWorkspace reproduction_workspace;
     LocalSearchWorkspace local_search_workspace;

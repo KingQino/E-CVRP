@@ -50,6 +50,8 @@ set(DEPENDENCIES
         src/initializer.cpp
         include/individual.hpp
         src/individual.cpp
+        include/stn_logger.hpp
+        src/stn_logger.cpp
         include/lahc.hpp
         src/lahc.cpp
         include/ma_types.hpp
@@ -108,7 +110,8 @@ if(CMAKE_BUILD_TYPE_UPPER STREQUAL "DEBUG")
                 tests/follower_test.cpp
                 tests/command_line_test.cpp
                 tests/ma_test.cpp
-                tests/two_stage_alns_test.cpp)
+                tests/two_stage_alns_test.cpp
+                tests/stn_logger_test.cpp)
         target_include_directories(Tests PRIVATE include external/include)
         target_link_libraries(Tests PRIVATE ${TEST_LIBRARIES} OpenMP::OpenMP_CXX)
 

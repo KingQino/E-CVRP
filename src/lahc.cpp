@@ -80,6 +80,9 @@ void Lahc::initialize_heuristic() {
 
     this->global_best_upper_cost = std::min(global_best_upper_cost,current->upper_cost);
 
+    // STN: the current solution after (re)initialisation.
+    if (stn_logger) stn_logger->observe(*current, iter_global, instance->get_distance_calls());
+
     this->iter = 0L;
     this->idle_iter = 0L;
     this->ratio_successful_moves = 1.0; // the largest decimal value
@@ -148,6 +151,11 @@ void Lahc::run_heuristic() {
             }
         }
 
+        // STN: the current solution at the end of the iteration (only when a grid point has been reached).
+        if (stn_logger && stn_logger->due(instance->get_distance_calls())) {
+            stn_logger->observe(*current, iter_global, instance->get_distance_calls());
+        }
+
         within_budget = stop_criteria == 0 ? !stop_criteria_max_evals() : !stop_criteria_max_exec_time(duration);
     } while ((iter < 100'000L || idle_iter < iter / 50) && ratio_successful_moves > 0.001 && within_budget);
 
@@ -170,6 +178,14 @@ double Lahc::run() {
         open_log_for_evolution();  // Open log if logging is enabled
     }
 
+    if (preprocessor->params.enable_stn_logging) {
+        stn_logger = std::make_unique<StnLogger>(
+            *instance,
+            fs::path(preprocessor->params.k_stats_path) / this->name / instance->instance_name_ / to_string(seed),
+            static_cast<std::uint64_t>(preprocessor->max_evals_) * static_cast<std::uint64_t>(instance->problem_size_),
+            preprocessor->params.stn_grid, preprocessor->params.stn_solutions);
+    }
+
 
     switch (stop_criteria) {
         case 0:
@@ -189,6 +205,12 @@ double Lahc::run() {
         default:
             std::cerr << "Invalid stop criteria option!" << std::endl;
             break;
+    }
+
+    // STN: the last current solution, then close the log (before the final follower, which does not change f_U).
+    if (stn_logger) {
+        stn_logger->observe(*current, iter_global, instance->get_distance_calls(), true);
+        stn_logger.reset();
     }
 
     // Optional final exact refinement for the best upper-level solution

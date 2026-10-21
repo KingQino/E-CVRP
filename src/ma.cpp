@@ -147,8 +147,17 @@ double Ma::run() {
         open_log_for_local_search();
     }
 
+    if (preprocessor->params.enable_stn_logging) {
+        stn_logger = std::make_unique<StnLogger>(*instance, log_directory(), evaluation_limit_distance_calls,
+                                                 preprocessor->params.stn_grid, preprocessor->params.stn_solutions);
+    }
+
     initialize_heuristic();
     run_heuristic();
+    if (stn_logger) {
+        stn_logger->finish();  // last generation, before the final follower (which does not change f_U)
+        stn_logger.reset();
+    }
     run_final_follower();
 
     if (enable_logging) {
@@ -218,6 +227,7 @@ void Ma::initialize_heuristic() {
 
     const std::shared_ptr<Individual> initial_best = MaReproduction::best_by_upper_cost(population);
     upper_best = std::make_unique<Individual>(*initial_best);
+    if (stn_logger) stn_logger->offer(*initial_best, 0, instance->get_distance_calls());  // STN: initial population
     global_best_upper_cost = upper_best->upper_cost;
 
     last_upper_improvement_distance_calls = instance->get_distance_calls();
@@ -314,6 +324,7 @@ void Ma::run_generation() {
         MaReproduction::build_parent_pool(ranked_upper_solutions, target_parent_pool_size);
 
     const std::shared_ptr<Individual> generation_best_upper = MaReproduction::best_by_upper_cost(population);
+    if (stn_logger) stn_logger->offer(*generation_best_upper, generation, instance->get_distance_calls());  // STN representative
     if (generation_best_upper->upper_cost < global_best_upper_cost) {
         *upper_best = *generation_best_upper;
         global_best_upper_cost = upper_best->upper_cost;

@@ -25,6 +25,11 @@ struct Parameters {
     bool enable_final_refinement; // Enable final follower refinement (default: true)
     int seed;                   // Random seed
 
+    // STN logging (stn-logging branch): passive trajectory logging for STNs-v2, off by default
+    bool enable_stn_logging;    // write stn_raw.<instance>.csv
+    double stn_grid;            // observation grid as a fraction of the max-evals budget
+    bool stn_solutions;         // also write stn_solutions.<instance>.csv (signature -> canonical routes)
+
     // LAHC parameters: bilevel late acceptance hill climbing, B-LAHC (LAHC uses LeaderSingle only)
     int lahc_history_length;            // LAHC: history length
     int lahc_max_attempts;              // LAHC: how many times the (random) neighbourhood is explored per move
@@ -69,7 +74,10 @@ struct Parameters {
             enable_multithreading(false),
             activate_exp_mode(false),
             enable_final_refinement(true),
-            seed(0) {
+            seed(0),
+            enable_stn_logging(false),
+            stn_grid(0.0001),
+            stn_solutions(true) {
 
         lahc_history_length = 5'723;
         lahc_max_attempts = 60;

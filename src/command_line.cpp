@@ -142,6 +142,12 @@ void CommandLine::parse_parameters(Parameters& params) const {
         params.activate_exp_mode = get_bool("exp", params.activate_exp_mode);
         params.enable_final_refinement = get_bool("refine", params.enable_final_refinement);
         params.seed = get_int("seed", params.seed);
+        params.enable_stn_logging = get_bool("stn", params.enable_stn_logging);
+        params.stn_grid = get_double("stn_grid", params.stn_grid);
+        params.stn_solutions = get_bool("stn_solutions", params.stn_solutions);
+        if (!(params.stn_grid > 0.0 && params.stn_grid <= 1.0)) {
+            throw std::invalid_argument("stn_grid must be in (0, 1]");
+        }
         // LAHC (B-LAHC); the unprefixed names are accepted as legacy aliases.
         params.lahc_history_length = get_int_alias("lahc_his_len", "his_len", params.lahc_history_length);
         params.lahc_max_attempts = get_int_alias("lahc_max_attempts", "max_attempts", params.lahc_max_attempts);
@@ -200,6 +206,9 @@ void CommandLine::display_help() {
               << "  -exp [0|1]                           : Activate experimental mode (default: 0)\n"
               << "  -refine [0|1]                        : Enable final follower refinement (default: 1)\n"
               << "  -seed [int]                          : Random seed (default: 0)\n"
+              << "  -stn [0|1]                           : Write the STN trajectory log stn_raw.<instance>.csv (default: 0)\n"
+              << "  -stn_grid [double]                   : STN observation grid, fraction of the max-evals budget (default: 0.0001)\n"
+              << "  -stn_solutions [0|1]                 : Also write stn_solutions.<instance>.csv (default: 1)\n"
               << "  -low_margin [double]                 : LAHC/MA upper-cost margin to trigger follower optimisation (MA: gamma), >= 1.0 (default: 1.05)\n"
               << "  -lahc_his_len [int]                  : LAHC history length (default: 5723)\n"
               << "  -lahc_max_attempts [int]             : LAHC max attempts for LeaderSingle (default: 60)\n"

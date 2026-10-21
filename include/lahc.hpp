@@ -12,6 +12,8 @@
 #include "individual.hpp"
 #include "heuristic_interface.hpp"
 #include "stats_interface.hpp"
+#include "stn_logger.hpp"
+#include <memory>
 
 class Lahc final : public HeuristicInterface, public StatsInterface {
 public:
@@ -44,6 +46,7 @@ public:
     Initializer* initializer;
     Leader* leader;
     Follower* follower;
+    std::unique_ptr<StnLogger> stn_logger;      // STN trajectory log of the current solution (nullptr when off)
 
     Lahc(int seed, Case *instance, Preprocessor* preprocessor);
     ~Lahc() override;
