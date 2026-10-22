@@ -29,6 +29,16 @@ def read_raw(path: Path) -> list:
         return [(int(r["distance_calls"]), float(r["fitness"]), r["signature"]) for r in csv.DictReader(f)]
 
 
+def best_so_far(observations: list) -> list:
+    """Replaces each observation by the best one logged so far in the run (strictly lower fitness wins)."""
+    best, rows = None, []
+    for calls, fitness, signature in observations:
+        if best is None or fitness < best[1]:
+            best = (calls, fitness, signature)
+        rows.append((calls, best[1], best[2]))
+    return rows
+
+
 def sample(observations: list, budget: int, interval: float) -> list:
     checkpoints = int(round(1.0 / interval))
     rows, i = [], 0
@@ -48,6 +58,8 @@ def main() -> int:
                         help="solver output folder and STN algorithm name, e.g. LAHC=BLAHC (repeatable)")
     parser.add_argument("--runs", type=int, default=10, help="number of runs (seeds 1..runs)")
     parser.add_argument("--interval", type=float, default=0.001, help="checkpoint interval, fraction of the budget")
+    parser.add_argument("--best-so-far", action="store_true",
+                        help="use the best logged representative so far, so fitness never increases (needed by STNWeb)")
     parser.add_argument("--collapse", action="store_true", help="drop consecutive repeats of the same (Fitness, Solution)")
     parser.add_argument("--out", required=True, type=Path, help="output root (STNs-v2 data folder)")
     args = parser.parse_args()
@@ -71,6 +83,8 @@ def main() -> int:
                 if abs(ratio - round(ratio)) > 1e-9:
                     print(f"warning: interval {args.interval} is not a multiple of the logging grid {grid}", file=sys.stderr)
                 observations = read_raw(run_dir / f"stn_raw.{args.instance}.csv")
+                if args.best_so_far:
+                    observations = best_so_far(observations)
                 if not observations:
                     sys.exit(f"empty raw log: {run_dir}")
                 previous = None
