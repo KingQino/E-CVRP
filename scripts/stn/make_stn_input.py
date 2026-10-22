@@ -87,13 +87,17 @@ def main() -> int:
                     observations = best_so_far(observations)
                 if not observations:
                     sys.exit(f"empty raw log: {run_dir}")
-                previous = None
+                rows = []
                 for _, fitness, signature in sample(observations, int(meta["budget_distance_calls"]), args.interval):
                     row = (f"{fitness:.2f}", signature)
-                    if args.collapse and row == previous:
+                    if args.collapse and rows and row == rows[-1]:
                         continue
+                    rows.append(row)
+                if len(rows) == 1:
+                    # create.R needs at least one edge per run; the repeated row becomes a self-loop it removes.
+                    rows.append(rows[0])
+                for row in rows:
                     writer.writerow([run, *row])
-                    previous = row
         print(f"wrote {out_path}")
     return 0
 
