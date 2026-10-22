@@ -227,7 +227,6 @@ void Ma::initialize_heuristic() {
 
     const std::shared_ptr<Individual> initial_best = MaReproduction::best_by_upper_cost(population);
     upper_best = std::make_unique<Individual>(*initial_best);
-    if (stn_logger) stn_logger->offer(*initial_best, 0, instance->get_distance_calls());  // STN: initial population
     global_best_upper_cost = upper_best->upper_cost;
 
     last_upper_improvement_distance_calls = instance->get_distance_calls();
@@ -278,11 +277,25 @@ void Ma::run_generation() {
 
     // === 1. Upper-level local search ===
     if (ls_policy == LocalSearchPolicy::Static) {
+        // STN representative: best individual of this generation among those whose local search is complete,
+        // observed after every individual (the random initial population and unsearched offspring are never logged).
+        const Individual* stn_best = nullptr;
+        const auto stn_observe = [&](const Individual& searched) {
+            if (!stn_logger) return;
+            const bool improved = stn_best == nullptr || searched.upper_cost < stn_best->upper_cost;
+            if (improved) stn_best = &searched;
+            if (improved || stn_logger->due(instance->get_distance_calls())) {
+                stn_logger->offer(*stn_best, generation, instance->get_distance_calls());
+            }
+        };
         for (const auto& individual : population) {
             const bool can_reuse_lower_elite = individual == unchanged_lower_elite
                 && individual->upper_locally_optimal
                 && individual->lower_cost < INFEASIBLE;
-            if (can_reuse_lower_elite) continue;
+            if (can_reuse_lower_elite) {
+                stn_observe(*individual);
+                continue;
+            }
 
             const LocalSearchResult result = static_unrestricted
                 ? MaLeader::improve_unrestricted(*individual, *instance, local_search_engine,
@@ -291,6 +304,7 @@ void Ma::run_generation() {
                       *individual, *instance, local_search_engine, static_action, local_search_workspace,
                       frozen_trigger_upper_bound, ls_depth_config);
             add_operator_stats(generation_operator_stats, result);
+            stn_observe(*individual);
         }
     } else {
         allocation_run = LocalSearchAllocationRunner::run(
@@ -324,7 +338,10 @@ void Ma::run_generation() {
         MaReproduction::build_parent_pool(ranked_upper_solutions, target_parent_pool_size);
 
     const std::shared_ptr<Individual> generation_best_upper = MaReproduction::best_by_upper_cost(population);
-    if (stn_logger) stn_logger->offer(*generation_best_upper, generation, instance->get_distance_calls());  // STN representative
+    if (stn_logger && ls_policy != LocalSearchPolicy::Static) {
+        // STN representative for the allocation policies: the best upper individual of the generation after local search.
+        stn_logger->offer(*generation_best_upper, generation, instance->get_distance_calls());
+    }
     if (generation_best_upper->upper_cost < global_best_upper_cost) {
         *upper_best = *generation_best_upper;
         global_best_upper_cost = upper_best->upper_cost;

@@ -15,7 +15,8 @@ The logged solution (the representative) is:
 | Algorithm | Representative | Observation points |
 |---|---|---|
 | B-LAHC (`lahc`) | the current solution | after each restart's initialisation and at the end of every iteration |
-| BMA (`ma`) | the best upper-level individual of the generation (after local search) | once per generation, plus the initial population |
+| BMA (`ma`), static policy | the best individual of the current generation among those whose local search is complete | after every individual's local search (the random initial population and unsearched offspring are never logged) |
+| BMA (`ma`), allocation policies | the best upper-level individual of the generation after local search | once per generation |
 
 At each observation point, the representative is written if a grid point has been reached since the last row. That gives one row at the first observation point at or after each grid point `k * grid * budget`. The last state of the run is always written. Fitness is the upper-level objective f_U for both algorithms.
 
@@ -58,6 +59,10 @@ python3 scripts/stn/make_stn_input.py --stats stats --instance X-n214-k11 \
 This writes `stn-data/X-n214-k11/BLAHC_X-n214-k11.csv` and `BMA_X-n214-k11.csv`, with the columns `Run,Fitness,Solution`. For each run, it samples checkpoints `k * interval * budget` for `k = 0, ..., 1/interval` (1,001 rows for 0.1%). Each checkpoint takes the first raw row at or after it, or the last row if the run ended before it. Fitness is rounded to 2 decimals. Use `--collapse` to drop consecutive repeats.
 
 `--interval` can be any multiple of the logging grid (0.1%, 0.5%, 1%, and so on) without rerunning. Algorithm names must not contain `_`, because STNs-v2 takes the name from the text before the first `_`.
+
+STN Web rejects minimisation runs whose fitness increases. Add `--best-so-far` to replace each logged representative by the best one logged so far in the run, and `--collapse` to keep only the improvements. A run with a single row gets that row twice, because `create.R` needs at least one edge per run.
+
+`scripts/stn/stn_v2_to_v1.py <v2 folder> <v1 folder>` converts these files into the edge lists of [STNs v1](https://github.com/gabro8a/STNs) (`Run,Fitness1,Solution1,Fitness2,Solution2`), whose `metrics-alg.R` and `metrics-merged.R` compute network metrics. `scripts/stn/trajectory_metrics.py` reports per-run best-so-far statistics from the raw logs: final f_U, number of improvements, budget used to reach the final best, and f_U at 1%, 10% and 50% of the budget.
 
 `scripts/stn/check_stn_logs.py` reports hash collisions, f_U consistency for each signature, and signatures shared between algorithms:
 
