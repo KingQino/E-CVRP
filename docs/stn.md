@@ -77,4 +77,38 @@ python3 scripts/stn/check_stn_logs.py --stats stats --instance X-n214-k11 --alg 
 | B-LAHC | `-alg lahc -lahc_his_len 5723 -lahc_max_attempts 60 -lahc_noise_lb 0.95 -lahc_noise_ub 1.05 -low_margin 1.05` |
 | BMA | `-alg ma -low_margin 1.05 -ma_ls_policy static -ma_static_unrestricted 1` |
 
-Both use `-stp 0 -mth 1 -log 1 -stn 1` (max-evals, seeds 1-10). On the cluster, add `-stn 1` to the arguments in `scripts/hpc/experiments.tsv`.
+Both use `-stp 0 -mth 1 -log 1 -stn 1` (max-evals, seeds 1-10). These rows are in [`scripts/stn/experiments.tsv`](../scripts/stn/experiments.tsv), with `-stn_solutions 0`, because the routes files of B-LAHC reach about 50 MB per run on X-n1001-k43. The instances are in [`scripts/stn/instances.txt`](../scripts/stn/instances.txt).
+
+## Running on HPC
+
+The STN experiments use the [HPC scripts](hpc.md) with the STN manifest and instance list. On the cluster, in an empty experiment directory:
+
+```shell
+git clone -b stn-logging git@github.com:KingQino/E-CVRP.git source
+
+export ECVRP_EXPERIMENTS=$PWD/source/scripts/stn/experiments.tsv
+export ECVRP_INSTANCES=$PWD/source/scripts/stn/instances.txt
+
+./source/scripts/hpc/setup-all.sh        # build, then prepare BLAHC/ and BMA/ (one array task per instance)
+./source/scripts/hpc/submit-all.sh
+./source/scripts/hpc/check-progress.sh   # add --resubmit for missing instances
+```
+
+Keep the two `export` lines in every new shell, because all the HPC scripts read them. X-n1001-k43 takes about 15 minutes per algorithm for 10 runs on 2 cores, so the default limit of 4 hours per array task is enough.
+
+When all runs are finished, build the STN inputs on the cluster (needs Python 3, for example `module load python`):
+
+```shell
+./source/scripts/stn/build-stn-inputs.sh
+```
+
+This writes `stn/` in the experiment directory:
+
+| Path | Contents |
+|---|---|
+| `stn/stn-web/<instance>/` | `BLAHC_<instance>.csv`, `BMA_<instance>.csv`: input of STNs-v2 and STN Web (best-so-far, improvements only) |
+| `stn/stn-v1/<instance>/` | the same trajectories as STNs v1 edge lists |
+| `stn/trajectory-metrics.csv` | final f_U, improvements, budget to the final best, f_U at 1%, 10% and 50% of the budget |
+| `stn/checks.txt` | hash collisions, f_U consistency and shared signatures |
+
+Download with `./scripts/hpc/download-results.sh --summary` on your computer; it includes `stn/` and the raw `stn_raw` and `stn_meta` files, so other intervals can be extracted later with `make_stn_input.py`. Then copy `stn/stn-web/<instance>/` into `data/` of STNs-v2, or `stn/stn-v1/<instance>/` into STNs v1, and run their R scripts.

@@ -176,6 +176,8 @@ Each id gets its own directory and Slurm array, so variants of the same algorith
 
 **Fewer instances.** Comment out lines in `instances.txt`, or point `ECVRP_INSTANCES` to another list. Array indices refer to the non-comment lines, starting at 0.
 
+**STN experiments.** See [Search Trajectory Networks](stn.md#running-on-hpc) for the B-LAHC and BMA trajectory runs, which use `scripts/stn/experiments.tsv` and `scripts/stn/instances.txt`.
+
 **A separate study.** Use a new directory, with its own clone, for each study (for example one for max-evals and one for max-time). That way results never mix.
 
 **Max-time runs.** Set `ECVRP_COMMON_ARGS="-stp 1 -mth 1 -log 1"` before `setup-all.sh`, in a separate experiment root. The time limit must exceed the run time limit of the largest instance (see [Algorithms](algorithms.md#max-time)).

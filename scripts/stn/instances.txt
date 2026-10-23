@@ -1,0 +1,9 @@
+# Instances for the STN experiments (B-LAHC vs BMA), one Slurm array task per instance.
+# Chosen from the BMA vs B-LAHC results: BMA better (E-n101-k8, M-n126-k7-s5), B-LAHC better
+# (X-n214-k11, X-n360-k40-s9, X-n1001-k43), and an easy instance where both reach the same best (RC205-10).
+E-n101-k8.evrp
+M-n126-k7-s5.evrp
+RC205-10.evrp
+X-n214-k11.evrp
+X-n360-k40-s9.evrp
+X-n1001-k43.evrp
