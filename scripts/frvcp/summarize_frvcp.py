@@ -6,6 +6,7 @@ Reads, for every experiment directory <root>/<id>/stats/<ALG>/<instance>/<seed>/
   shadow_summary.<instance>.csv   SE runs with -shadow_dp 1: heuristic final cost, exact cost of the same routes,
                                   best exact cost of any evaluated solution
   shadow.<instance>.csv           SE runs: per budget tenth, route-level and decision statistics
+  verify.<instance>.csv           -lower_solver verify runs: evaluations, exact verifications, improved, rescued
 
 Writes to <out>:
   per_instance.csv   one row per experiment and instance (means over seeds)
@@ -64,10 +65,19 @@ def summarise_instance(inst_dir: Path, instance: str) -> dict:
                         totals[key] = max(totals[key], float(value))
                     else:
                         totals[key] += float(value)
+        verify = seed_dir / f"verify.{instance}.csv"
+        if verify.exists():
+            for key, value in next(csv.DictReader(verify.open())).items():
+                totals["verify_" + key] += float(value)
     out = {"runs": len(final), "final_mean": st.mean(final) if final else None}
     if hh:
         out.update(hh_mean=st.mean(hh), hdp_mean=st.mean(hdp), best_exact_seen_mean=st.mean(best_seen))
-    if totals:
+    if totals.get("verify_evaluations"):
+        ev = totals["verify_evaluations"]
+        out.update(verified_pct=100 * totals["verify_verified"] / ev,
+                   verify_improved_pct=100 * totals["verify_improved"] / ev,
+                   verify_rescued_pct=100 * totals["verify_rescued"] / ev)
+    if totals.get("calls"):
         routes = totals["charging_routes"]
         solved = routes - totals["false_infeasible"] - totals["both_infeasible"]
         out.update(

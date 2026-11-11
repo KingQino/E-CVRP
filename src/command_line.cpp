@@ -142,14 +142,21 @@ void CommandLine::parse_parameters(Parameters& params) const {
         params.activate_exp_mode = get_bool("exp", params.activate_exp_mode);
         params.enable_final_refinement = get_bool("refine", params.enable_final_refinement);
         {
-            const std::string solver = get_string("lower_solver", params.lower_solver_dp ? "dp" : "se");
-            if (solver == "se") params.lower_solver_dp = false;
-            else if (solver == "dp") params.lower_solver_dp = true;
-            else throw std::invalid_argument("lower_solver must be se or dp");
+            const std::string solver = get_string("lower_solver",
+                params.lower_solver_dp ? "dp" : (params.lower_solver_verify ? "verify" : "se"));
+            params.lower_solver_dp = solver == "dp";
+            params.lower_solver_verify = solver == "verify";
+            if (solver != "se" && solver != "dp" && solver != "verify") {
+                throw std::invalid_argument("lower_solver must be se, dp or verify");
+            }
+        }
+        params.verify_margin = get_double("verify_margin", params.verify_margin);
+        if (!(params.verify_margin >= 0.0)) throw std::invalid_argument("verify_margin must be >= 0");
+        {
         }
         params.shadow_dp = get_bool("shadow_dp", params.shadow_dp);
         params.se_both_counts = get_bool("se_both_counts", params.se_both_counts);
-        if (params.shadow_dp && params.lower_solver_dp) {
+        if (params.shadow_dp && (params.lower_solver_dp || params.lower_solver_verify)) {
             throw std::invalid_argument("shadow_dp compares simple enumeration with the DP; use it with -lower_solver se");
         }
         params.seed = get_int("seed", params.seed);
@@ -210,7 +217,8 @@ void CommandLine::display_help() {
               << "  -mth [0|1]                           : Enable multi-threading (default: 1)\n"
               << "  -exp [0|1]                           : Activate experimental mode (default: 0)\n"
               << "  -refine [0|1]                        : Enable final follower refinement (default: 1)\n"
-              << "  -lower_solver [se|dp]                : Charging during search: simple enumeration or exact DP (default: se)\n"
+              << "  -lower_solver [se|dp|verify]         : Charging during search: simple enumeration, exact DP, or SE with DP verification of promising candidates (default: se)\n"
+              << "  -verify_margin [double]              : verify: re-evaluate exactly if the optimistic SE cost <= (1 + margin) x best (default: 0.02)\n"
               << "  -shadow_dp [0|1]                     : Also solve each charging problem exactly (uncharged) and log disagreements (default: 0)\n"
               << "  -se_both_counts [0|1]                : Simple enumeration tries both station counts (MA always; default for LAHC: 0)\n"
               << "  -seed [int]                          : Random seed (default: 0)\n"

@@ -68,6 +68,14 @@ public:
     // true = exact DP (charging_placement_dp), every distance read charged as for SE.
     bool use_optimal_charging = false;
 
+    // Verification (-lower_solver verify): SE as usual; if the candidate's optimistic heuristic cost (SE cost, or the
+    // uncharged route length where SE and its fallback fail) is at most verify_threshold, every route is re-evaluated
+    // with the exact DP (reads charged) and the exact cost replaces the heuristic one. The host sets the threshold.
+    bool verify_candidates = false;
+    double verify_threshold = std::numeric_limits<double>::max();
+    std::uint64_t verify_calls = 0, verify_improved = 0, verify_rescued = 0, verify_evaluations = 0;
+    void write_verify_log(const std::filesystem::path& directory, const std::string& instance_name) const;
+
     // Shadow diagnostics (SE mode only): every route evaluated by Follower::run is also solved exactly with
     // the DP; the reads of the shadow solve are not charged, so the search is unchanged. Statistics are
     // kept per tenth of the evaluation budget, and a reservoir sample of routes is kept for offline tests.

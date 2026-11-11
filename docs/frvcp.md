@@ -6,7 +6,8 @@ This branch (`frvcp-experiments`) compares charging methods inside the bilevel s
 
 | Option | Default | Meaning |
 |---|---|---|
-| `-lower_solver se\|dp` | `se` | charging method during the search. `dp` solves every charging problem exactly; its route-to-station distance reads are charged like SE's |
+| `-lower_solver se\|dp\|verify` | `se` | charging method during the search. `dp` solves every charging problem exactly; its route-to-station distance reads are charged like SE's. `verify` uses SE, then re-solves a candidate exactly (reads charged) when its SE cost, or its uncharged length if SE fails, is within `-verify_margin` of the best solution found |
+| `-verify_margin` | `0.02` | relative margin for `verify`; the experiments use 0.005 and 0.02 |
 | `-shadow_dp 0\|1` | `0` | SE runs only: also solve every charging problem exactly, with the reads restored afterwards, so the search and its budget are unchanged. Writes diagnostics (below) |
 | `-se_both_counts 0\|1` | `0` | SE tries both station counts l_min and l_min + 1. MA always does; b-LAHC's published setting is `0` (first feasible count) |
 | `-refine 0\|1` | `1` | exact DP on the final solution |
@@ -20,6 +21,7 @@ Station-to-station distances are instance preprocessing (`Preprocessor::station_
 | H–H | SE during search, no final DP | `final_mean` of a `-shadow_dp 1 -refine 0` run, or `heuristic_final_cost` in `shadow_summary` |
 | H–DP | SE during search, final DP | `exact_cost_of_heuristic_final` of the same run (identical to running with `-refine 1`) |
 | DP–DP | DP during search | `-lower_solver dp` |
+| Verify | SE during search, exact DP on promising candidates, final DP | `-lower_solver verify` (writes `verify.<instance>.csv`: evaluations, verified, improved, rescued from false infeasibility) |
 
 `best_exact_cost_evaluated` is the lowest exact cost of any solution evaluated during the SE run. For b-LAHC, whose search never depends on charging costs, the gap between H–DP and this value is the loss caused by ranking candidates with SE costs.
 
@@ -35,7 +37,7 @@ In `stats/<ALG>/<instance>/<seed>/`:
 
 ## Running on HPC
 
-Use the HPC scripts with the experiment list in [`scripts/frvcp/experiments.tsv`](../scripts/frvcp/experiments.tsv) and all 133 instances. In an empty directory on the cluster:
+Use the HPC scripts with the experiment list in [`scripts/frvcp/experiments.tsv`](../scripts/frvcp/experiments.tsv) (b-LAHC) and all 133 instances. The BMA rows are in [`experiments-ma.tsv`](../scripts/frvcp/experiments-ma.tsv), for an optional separate run. In an empty directory on the cluster:
 
 ```shell
 git clone -b frvcp-experiments git@github.com:KingQino/E-CVRP.git source
@@ -44,7 +46,9 @@ export ECVRP_TIME_LIMIT=08:00:00
 ./source/scripts/hpc/setup-all.sh
 ./source/scripts/hpc/submit-all.sh
 ./source/scripts/hpc/check-progress.sh          # --resubmit for missing instances
-python3 source/scripts/frvcp/summarize_frvcp.py . frvcp-summary LAHC-SE1,LAHC-SE1-SHADOW,LAHC-SE2-SHADOW,LAHC-DP,MA-SE,MA-SE-SHADOW,MA-DP
+python3 source/scripts/frvcp/summarize_frvcp.py . frvcp-summary LAHC-SE1,LAHC-SE1-SHADOW,LAHC-SE2-SHADOW,LAHC-DP,LAHC-VERIFY,LAHC-VERIFY-02
 ```
 
 Keep the `export` lines in every new shell. Shadow and DP runs are slower in wall-clock time than SE runs (up to about 25 times for b-LAHC), hence the 8-hour limit. On your computer, `./scripts/hpc/download-results.sh --summary` downloads the solutions, `frvcp-summary/` and the `shadow*` files.
+
+For the BMA rows, use a separate directory with `export ECVRP_EXPERIMENTS=$PWD/source/scripts/frvcp/experiments-ma.tsv` and the ids `MA-SE,MA-SE-SHADOW,MA-DP`.

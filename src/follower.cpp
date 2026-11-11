@@ -284,6 +284,34 @@ void Follower::run(Individual* ind) {
                                  lower_cost_per_route + num_routes,
                                  0.0);
 
+    if (verify_candidates) {
+        ++verify_evaluations;
+        double optimistic = 0.0;
+        for (int i = 0; i < num_routes; ++i) {
+            if (lower_cost_per_route[i] < INFEASIBLE) {
+                optimistic += lower_cost_per_route[i];
+            } else {
+                for (int j = 1; j < ind->num_nodes_per_route[i]; ++j) {
+                    optimistic += instance->distances_[ind->routes[i][j - 1]][ind->routes[i][j]];
+                }
+            }
+        }
+        if (optimistic <= verify_threshold) {
+            ++verify_calls;
+            const bool was_infeasible = lower_cost >= INFEASIBLE;
+            for (int i = 0; i < num_routes; ++i) {
+                const int length = ind->num_nodes_per_route[i];
+                if (length <= 2) continue;
+                const double exact = eval_optimal_cost(ind->routes[i], length);
+                lower_cost_per_route[i] = (exact < 0) ? INFEASIBLE : exact;
+            }
+            const double exact_total = std::accumulate(lower_cost_per_route, lower_cost_per_route + num_routes, 0.0);
+            if (was_infeasible && exact_total < INFEASIBLE) ++verify_rescued;
+            else if (exact_total < lower_cost - 1e-9) ++verify_improved;
+            lower_cost = exact_total;
+        }
+    }
+
     if (shadow_optimal) {
         ++shadow_stages[shadow_stage()].calls;
         ind->shadow_lower_cost = shadow_cost_per_route_total;
@@ -292,6 +320,13 @@ void Follower::run(Individual* ind) {
     }
 
     export_individual(ind);
+}
+
+void Follower::write_verify_log(const std::filesystem::path& directory, const std::string& instance_name) const {
+    std::filesystem::create_directories(directory);
+    std::ofstream out(directory / ("verify." + instance_name + ".csv"));
+    out << "evaluations,verified,improved,rescued\n"
+        << verify_evaluations << ',' << verify_calls << ',' << verify_improved << ',' << verify_rescued << "\n";
 }
 
 int Follower::shadow_stage() const {

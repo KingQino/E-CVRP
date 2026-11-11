@@ -24,6 +24,8 @@ struct Parameters {
     bool activate_exp_mode;     // Activate experimental mode (default: false)
     bool enable_final_refinement; // Enable final follower refinement (default: true)
     bool lower_solver_dp;       // Charging during search: false = simple enumeration (+ insert-then-remove), true = exact DP
+    bool lower_solver_verify;   // Charging during search: simple enumeration, exact DP re-evaluation of promising candidates
+    double verify_margin;       // verify a candidate if its optimistic heuristic cost <= (1 + margin) x best complete cost
     bool shadow_dp;             // Diagnostics: also solve each charging problem exactly, uncharged, and log disagreements
     bool se_both_counts;        // Simple enumeration tries l_min and l_min + 1 stations (MA always; LAHC only if set)
     int seed;                   // Random seed
@@ -73,6 +75,8 @@ struct Parameters {
             activate_exp_mode(false),
             enable_final_refinement(true),
             lower_solver_dp(false),
+            lower_solver_verify(false),
+            verify_margin(0.02),
             shadow_dp(false),
             se_both_counts(false),
             seed(0) {

@@ -113,3 +113,21 @@ TEST(OptimalChargingTest, ExactSearchRuns) {
     EXPECT_LT(run_once<Ma>("E-n22-k4.evrp", false, true).cost, 1e6);
     fs::remove_all(fs::temp_directory_path() / "ecvrp_frvcp_test");
 }
+
+// Verifying promising candidates exactly runs to completion and never reports a final cost worse than its exact refinement.
+TEST(OptimalChargingTest, VerifyPromisingCandidatesRuns) {
+    for (const char* name : {"E-n22-k4.evrp", "R102-15.evrp"}) {
+        Parameters params;
+        params.k_stats_path = (fs::temp_directory_path() / "ecvrp_frvcp_test").string();
+        params.lower_solver_verify = true;
+        params.verify_margin = 0.02;
+        Case instance(data_path().string(), name);
+        Preprocessor preprocessor(instance, params);
+        Lahc lahc(2, &instance, &preprocessor);
+        EXPECT_LT(lahc.run(), 1e6) << name;
+        EXPECT_TRUE(fs::exists(fs::temp_directory_path() / "ecvrp_frvcp_test" / "LAHC" /
+                               fs::path(name).stem() / "2" / ("verify." + fs::path(name).stem().string() + ".csv")))
+            << name;
+    }
+    fs::remove_all(fs::temp_directory_path() / "ecvrp_frvcp_test");
+}

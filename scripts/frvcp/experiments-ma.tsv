@@ -1,0 +1,4 @@
+id	algorithm	arguments
+MA-SE	ma	-low_margin 1.05 -ma_ls_policy static -ma_static_unrestricted 1
+MA-SE-SHADOW	ma	-low_margin 1.05 -ma_ls_policy static -ma_static_unrestricted 1 -shadow_dp 1 -refine 0
+MA-DP	ma	-low_margin 1.05 -ma_ls_policy static -ma_static_unrestricted 1 -lower_solver dp

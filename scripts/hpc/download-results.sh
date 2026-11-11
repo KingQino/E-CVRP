@@ -21,7 +21,7 @@ if [[ "${1:-}" == "--summary" ]]; then
         --include 'results/**' \
         --include 'configuration.tsv' --include 'source-commit.txt' --include 'submitted-jobs.tsv' \
         --include 'solution.*.txt' --include 'stats.*.evrp' --include '*.tsv' \
-        --include 'shadow*.csv' --include 'frvcp-summary/**' \
+        --include 'shadow*.csv' --include 'verify*.csv' --include 'frvcp-summary/**' \
         --exclude '*' \
         "$ECVRP_REMOTE:$ECVRP_REMOTE_ROOT/" "$local_root/"
 else

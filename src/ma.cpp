@@ -130,6 +130,7 @@ Ma::Ma(const int seed, Case* instance, Preprocessor* preprocessor)
     follower->se_compare_station_counts = true;  // MA's SE compares l_min and l_min + 1 stations
     follower->use_optimal_charging = preprocessor->params.lower_solver_dp;
     follower->shadow_optimal = preprocessor->params.shadow_dp;
+    follower->verify_candidates = preprocessor->params.lower_solver_verify;
 }
 
 Ma::~Ma() {
@@ -335,6 +336,7 @@ void Ma::run_generation() {
         const bool can_reuse_lower_elite = individual == unchanged_lower_elite && individual->lower_cost < INFEASIBLE;
         if (!can_reuse_lower_elite) {
             ++follower_runs;
+            follower->verify_threshold = verified_best->lower_cost * (1.0 + preprocessor->params.verify_margin);
             follower->run(individual.get());
         }
         evaluated_complete_solutions.push_back(individual);
@@ -516,6 +518,7 @@ void Ma::load_offspring(Individual& offspring, const std::vector<int>& chromosom
 
 void Ma::run_final_follower() {
     // Fall back to the best upper-level solution if no feasible complete solution (x*) was found.
+    if (follower->verify_candidates) follower->write_verify_log(log_directory(), instance->instance_name_);
     if (follower->shadow_optimal) {
         follower->write_shadow_log(log_directory(), instance->instance_name_,
                                    verified_best->lower_cost, verified_best->shadow_lower_cost);

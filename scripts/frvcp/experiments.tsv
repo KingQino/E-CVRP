@@ -3,6 +3,5 @@ LAHC-SE1	lahc	-lahc_his_len 5723 -lahc_max_attempts 60 -lahc_noise_lb 0.95 -lahc
 LAHC-SE1-SHADOW	lahc	-lahc_his_len 5723 -lahc_max_attempts 60 -lahc_noise_lb 0.95 -lahc_noise_ub 1.05 -low_margin 1.05 -se_both_counts 0 -shadow_dp 1 -refine 0
 LAHC-SE2-SHADOW	lahc	-lahc_his_len 5723 -lahc_max_attempts 60 -lahc_noise_lb 0.95 -lahc_noise_ub 1.05 -low_margin 1.05 -se_both_counts 1 -shadow_dp 1 -refine 0
 LAHC-DP	lahc	-lahc_his_len 5723 -lahc_max_attempts 60 -lahc_noise_lb 0.95 -lahc_noise_ub 1.05 -low_margin 1.05 -lower_solver dp
-MA-SE	ma	-low_margin 1.05 -ma_ls_policy static -ma_static_unrestricted 1
-MA-SE-SHADOW	ma	-low_margin 1.05 -ma_ls_policy static -ma_static_unrestricted 1 -shadow_dp 1 -refine 0
-MA-DP	ma	-low_margin 1.05 -ma_ls_policy static -ma_static_unrestricted 1 -lower_solver dp
+LAHC-VERIFY	lahc	-lahc_his_len 5723 -lahc_max_attempts 60 -lahc_noise_lb 0.95 -lahc_noise_ub 1.05 -low_margin 1.05 -se_both_counts 0 -lower_solver verify -verify_margin 0.005
+LAHC-VERIFY-02	lahc	-lahc_his_len 5723 -lahc_max_attempts 60 -lahc_noise_lb 0.95 -lahc_noise_ub 1.05 -low_margin 1.05 -se_both_counts 0 -lower_solver verify -verify_margin 0.02

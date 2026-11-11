@@ -37,6 +37,7 @@ Lahc::Lahc(const int seed, Case* instance, Preprocessor* preprocessor)
     follower->se_compare_station_counts = preprocessor->params.se_both_counts;
     follower->use_optimal_charging = preprocessor->params.lower_solver_dp;
     follower->shadow_optimal = preprocessor->params.shadow_dp;
+    follower->verify_candidates = preprocessor->params.lower_solver_verify;
 }
 
 Lahc::~Lahc() {
@@ -70,10 +71,12 @@ void Lahc::initialize_heuristic() {
 
     if (enable_logging) {
         const auto t0 = std::chrono::high_resolution_clock::now();
+        follower->verify_threshold = global_best->lower_cost * (1.0 + preprocessor->params.verify_margin);
         follower->run(current);
         prof_follower_run_sec += std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - t0).count();
         ++prof_follower_run_calls;
     } else {
+        follower->verify_threshold = global_best->lower_cost * (1.0 + preprocessor->params.verify_margin);
         follower->run(current);
     }
 
@@ -144,10 +147,12 @@ void Lahc::run_heuristic() {
         if (has_moved && candidate_cost < global_best_upper_cost * low_opt_trigger_margin) {
             if (enable_logging) {
                 const auto t0 = std::chrono::high_resolution_clock::now();
+                follower->verify_threshold = global_best->lower_cost * (1.0 + preprocessor->params.verify_margin);
                 follower->run(current);
                 prof_follower_run_sec += std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - t0).count();
                 ++prof_follower_run_calls;
             } else {
+                follower->verify_threshold = global_best->lower_cost * (1.0 + preprocessor->params.verify_margin);
                 follower->run(current);
             }
             if (follower->shadow_optimal) {
@@ -202,6 +207,10 @@ double Lahc::run() {
             break;
     }
 
+    if (follower->verify_candidates) {
+        follower->write_verify_log(fs::path(preprocessor->params.k_stats_path) / this->name / instance->instance_name_ / to_string(seed),
+                                   instance->instance_name_);
+    }
     if (follower->shadow_optimal) {
         follower->write_shadow_log(fs::path(preprocessor->params.k_stats_path) / this->name / instance->instance_name_ / to_string(seed),
                                    instance->instance_name_, global_best->lower_cost, global_best->shadow_lower_cost);
