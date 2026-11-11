@@ -9,6 +9,8 @@ experiments
 external/googletest/
 /build-debug/
 /build/
+hpc-results/
+stn-experiments/
 
 # Prerequisites
 *.d
