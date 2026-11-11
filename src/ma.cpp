@@ -128,6 +128,8 @@ Ma::Ma(const int seed, Case* instance, Preprocessor* preprocessor)
     initializer = new Initializer(random_engine, instance, preprocessor);
     follower = new Follower(instance, preprocessor);
     follower->se_compare_station_counts = true;  // MA's SE compares l_min and l_min + 1 stations
+    follower->use_optimal_charging = preprocessor->params.lower_solver_dp;
+    follower->shadow_optimal = preprocessor->params.shadow_dp;
 }
 
 Ma::~Ma() {
@@ -342,6 +344,19 @@ void Ma::run_generation() {
     std::shared_ptr<Individual> lower_elite;
     if (!evaluated_complete_solutions.empty()) {
         const std::shared_ptr<Individual> best_complete = MaReproduction::best_by_lower_cost(evaluated_complete_solutions);
+        if (follower->shadow_optimal) {
+            // Diagnostics only: would exact charging costs pick another individual or change the update of x*?
+            const auto exact_best = *std::min_element(
+                evaluated_complete_solutions.begin(), evaluated_complete_solutions.end(),
+                [](const std::shared_ptr<Individual>& a, const std::shared_ptr<Individual>& b) {
+                    return a->shadow_lower_cost < b->shadow_lower_cost;
+                });
+            const bool same_choice = exact_best == best_complete
+                || exact_best->shadow_lower_cost >= best_complete->shadow_lower_cost - 1e-9;
+            follower->record_decision(1, true, same_choice);
+            follower->record_decision(2, verified_best->lower_cost > best_complete->lower_cost,
+                                      verified_best->shadow_lower_cost > exact_best->shadow_lower_cost + 1e-9);
+        }
         if (best_complete->lower_cost < INFEASIBLE) {
             lower_elite = best_complete;
         }
@@ -501,6 +516,10 @@ void Ma::load_offspring(Individual& offspring, const std::vector<int>& chromosom
 
 void Ma::run_final_follower() {
     // Fall back to the best upper-level solution if no feasible complete solution (x*) was found.
+    if (follower->shadow_optimal) {
+        follower->write_shadow_log(log_directory(), instance->instance_name_,
+                                   verified_best->lower_cost, verified_best->shadow_lower_cost);
+    }
     if (verified_best->lower_cost >= INFEASIBLE && upper_best != nullptr) {
         *verified_best = *upper_best;
     }

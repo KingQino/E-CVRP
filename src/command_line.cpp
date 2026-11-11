@@ -141,6 +141,17 @@ void CommandLine::parse_parameters(Parameters& params) const {
         params.enable_multithreading = get_bool("mth", params.enable_multithreading);
         params.activate_exp_mode = get_bool("exp", params.activate_exp_mode);
         params.enable_final_refinement = get_bool("refine", params.enable_final_refinement);
+        {
+            const std::string solver = get_string("lower_solver", params.lower_solver_dp ? "dp" : "se");
+            if (solver == "se") params.lower_solver_dp = false;
+            else if (solver == "dp") params.lower_solver_dp = true;
+            else throw std::invalid_argument("lower_solver must be se or dp");
+        }
+        params.shadow_dp = get_bool("shadow_dp", params.shadow_dp);
+        params.se_both_counts = get_bool("se_both_counts", params.se_both_counts);
+        if (params.shadow_dp && params.lower_solver_dp) {
+            throw std::invalid_argument("shadow_dp compares simple enumeration with the DP; use it with -lower_solver se");
+        }
         params.seed = get_int("seed", params.seed);
         // LAHC (B-LAHC); the unprefixed names are accepted as legacy aliases.
         params.lahc_history_length = get_int_alias("lahc_his_len", "his_len", params.lahc_history_length);
@@ -199,6 +210,9 @@ void CommandLine::display_help() {
               << "  -mth [0|1]                           : Enable multi-threading (default: 1)\n"
               << "  -exp [0|1]                           : Activate experimental mode (default: 0)\n"
               << "  -refine [0|1]                        : Enable final follower refinement (default: 1)\n"
+              << "  -lower_solver [se|dp]                : Charging during search: simple enumeration or exact DP (default: se)\n"
+              << "  -shadow_dp [0|1]                     : Also solve each charging problem exactly (uncharged) and log disagreements (default: 0)\n"
+              << "  -se_both_counts [0|1]                : Simple enumeration tries both station counts (MA always; default for LAHC: 0)\n"
               << "  -seed [int]                          : Random seed (default: 0)\n"
               << "  -low_margin [double]                 : LAHC/MA upper-cost margin to trigger follower optimisation (MA: gamma), >= 1.0 (default: 1.05)\n"
               << "  -lahc_his_len [int]                  : LAHC history length (default: 5723)\n"

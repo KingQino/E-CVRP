@@ -23,6 +23,9 @@ struct Parameters {
     bool enable_multithreading; // Enable multi-threading
     bool activate_exp_mode;     // Activate experimental mode (default: false)
     bool enable_final_refinement; // Enable final follower refinement (default: true)
+    bool lower_solver_dp;       // Charging during search: false = simple enumeration (+ insert-then-remove), true = exact DP
+    bool shadow_dp;             // Diagnostics: also solve each charging problem exactly, uncharged, and log disagreements
+    bool se_both_counts;        // Simple enumeration tries l_min and l_min + 1 stations (MA always; LAHC only if set)
     int seed;                   // Random seed
 
     // LAHC parameters: bilevel late acceptance hill climbing, B-LAHC (LAHC uses LeaderSingle only)
@@ -69,6 +72,9 @@ struct Parameters {
             enable_multithreading(false),
             activate_exp_mode(false),
             enable_final_refinement(true),
+            lower_solver_dp(false),
+            shadow_dp(false),
+            se_both_counts(false),
             seed(0) {
 
         lahc_history_length = 5'723;

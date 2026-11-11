@@ -10,6 +10,9 @@
 #include <cassert>
 #include <limits>
 #include <vector>
+#include <numeric>
+#include <iomanip>
+#include <fstream>
 
 using namespace std;
 
@@ -209,12 +212,71 @@ void Follower::run(Individual* ind) {
 
         const int* route = ind->routes[i];
 
+        if (use_optimal_charging) {
+            const double cost_DP = eval_optimal_cost(route, length);
+            lower_cost_per_route[i] = (cost_DP < 0) ? INFEASIBLE : cost_DP;
+            continue;
+        }
+
         const double cost_SE = eval_simple_enum_cost(route, length);
+        double heuristic_cost = cost_SE;
         if (cost_SE < 0) {
             const double cost_RE = eval_remove_enum_cost(route, length);
+            heuristic_cost = cost_RE;
             lower_cost_per_route[i] = (cost_RE < 0) ? INFEASIBLE : cost_RE;
         } else {
             lower_cost_per_route[i] = cost_SE;
+        }
+
+        if (shadow_optimal) {
+            // Exact solve with the reads restored afterwards: the evaluation budget is not affected.
+            std::uint64_t key = 14695981039346656037ULL ^ static_cast<std::uint64_t>(length);
+            for (int j = 0; j < length; ++j) {
+                key ^= static_cast<std::uint64_t>(route[j]) + 0x9e3779b97f4a7c15ULL + (key << 6) + (key >> 2);
+                key *= 1099511628211ULL;
+            }
+            double exact;
+            bool first_time = false;
+            if (const auto hit = shadow_cache.find(key); hit != shadow_cache.end()) {
+                exact = hit->second;
+            } else {
+                const std::uint64_t saved_calls = instance->distance_calls_;
+                exact = eval_optimal_cost(route, length);
+                instance->distance_calls_ = saved_calls;
+                if (shadow_cache.size() >= shadow_cache_limit) shadow_cache.clear();
+                shadow_cache.emplace(key, exact);
+                first_time = true;
+            }
+
+            double plain = 0.0;
+            for (int j = 1; j < length; ++j) plain += instance->distances_[route[j - 1]][route[j]];
+            if (first_time && plain > preprocessor->max_cruise_distance_) {
+                ShadowStage& st = shadow_stages[shadow_stage()];
+                ++st.charging_routes;
+                if (cost_SE < 0) ++st.se_failed;
+                if (exact < 0) {
+                    if (heuristic_cost < 0) ++st.both_infeasible;
+                } else if (heuristic_cost < 0) {
+                    ++st.false_infeasible;
+                } else {
+                    const double gap = std::max(0.0, 100.0 * (heuristic_cost - exact) / exact);
+                    if (gap <= 1e-7) ++st.se_optimal;
+                    st.gap_sum += gap;
+                    st.gap_max = std::max(st.gap_max, gap);
+                }
+                // Reservoir sample of charging routes (private RNG).
+                ++shadow_routes_seen;
+                std::size_t slot = shadow_routes.size();
+                if (slot >= shadow_route_capacity) {
+                    slot = std::uniform_int_distribution<std::uint64_t>(0, shadow_routes_seen - 1)(shadow_rng);
+                }
+                if (slot < shadow_route_capacity) {
+                    ShadowRoute sample{shadow_stage(), heuristic_cost, exact, std::vector<int>(route, route + length)};
+                    if (slot == shadow_routes.size()) shadow_routes.push_back(std::move(sample));
+                    else shadow_routes[slot] = std::move(sample);
+                }
+            }
+            shadow_cost_per_route_total += (exact < 0) ? static_cast<double>(INFEASIBLE) : exact;
         }
     }
 
@@ -222,7 +284,70 @@ void Follower::run(Individual* ind) {
                                  lower_cost_per_route + num_routes,
                                  0.0);
 
+    if (shadow_optimal) {
+        ++shadow_stages[shadow_stage()].calls;
+        ind->shadow_lower_cost = shadow_cost_per_route_total;
+        shadow_best_seen = std::min(shadow_best_seen, shadow_cost_per_route_total);
+        shadow_cost_per_route_total = 0.0;
+    }
+
     export_individual(ind);
+}
+
+int Follower::shadow_stage() const {
+    const double budget = preprocessor->max_evals_ * static_cast<double>(instance->problem_size_);
+    if (budget <= 0.0) return 0;
+    const int stage = static_cast<int>(10.0 * static_cast<double>(instance->get_distance_calls()) / budget);
+    return std::clamp(stage, 0, 9);
+}
+
+void Follower::record_decision(const int kind, const bool heuristic_update, const bool exact_update) {
+    ShadowStage& st = shadow_stages[shadow_stage()];
+    ++st.decisions[kind];
+    if (heuristic_update != exact_update) {
+        ++st.disagreements[kind];
+        if (heuristic_update) ++st.se_only[kind];
+        else ++st.dp_only[kind];
+    }
+}
+
+void Follower::write_shadow_log(const std::filesystem::path& directory, const std::string& instance_name,
+                                const double heuristic_final_cost, const double exact_cost_of_heuristic_final) const {
+    std::filesystem::create_directories(directory);
+    {
+        std::ofstream out(directory / ("shadow." + instance_name + ".csv"));
+        out << "stage,calls,charging_routes,se_optimal,se_failed,false_infeasible,both_infeasible,gap_sum,gap_max";
+        for (int k = 0; k < 3; ++k) {
+            out << ",decisions_" << k << ",disagreements_" << k << ",se_only_" << k << ",dp_only_" << k;
+        }
+        out << "\n";
+        out << std::setprecision(10);
+        for (int stage = 0; stage < 10; ++stage) {
+            const ShadowStage& st = shadow_stages[stage];
+            out << stage << ',' << st.calls << ',' << st.charging_routes << ',' << st.se_optimal << ','
+                << st.se_failed << ',' << st.false_infeasible << ',' << st.both_infeasible << ','
+                << st.gap_sum << ',' << st.gap_max;
+            for (int k = 0; k < 3; ++k) {
+                out << ',' << st.decisions[k] << ',' << st.disagreements[k] << ',' << st.se_only[k] << ',' << st.dp_only[k];
+            }
+            out << "\n";
+        }
+    }
+    {
+        std::ofstream out(directory / ("shadow_summary." + instance_name + ".csv"));
+        out << std::setprecision(10)
+            << "heuristic_final_cost,exact_cost_of_heuristic_final,best_exact_cost_evaluated\n"
+            << heuristic_final_cost << ',' << exact_cost_of_heuristic_final << ',' << shadow_best_seen << "\n";
+    }
+    {
+        std::ofstream out(directory / ("shadow_routes." + instance_name + ".csv"));
+        out << std::setprecision(10) << "stage,heuristic_cost,exact_cost,route\n";
+        for (const ShadowRoute& r : shadow_routes) {
+            out << r.stage << ',' << r.heuristic_cost << ',' << r.exact_cost << ',';
+            for (std::size_t j = 0; j < r.route.size(); ++j) out << (j ? "-" : "") << r.route[j];
+            out << "\n";
+        }
+    }
 }
 
 void Follower::load_individual(const Individual* ind) {
@@ -830,6 +955,20 @@ private:
 };
 
 } // namespace
+
+double Follower::eval_optimal_cost(const int* route, const int length) const {
+    if (length <= 2) return 0.0;
+    std::vector<double> accumulated_distance(length, 0.0);
+    for (int i = 1; i < length; ++i) {
+        accumulated_distance[i] = accumulated_distance[i - 1] + instance->get_distance(route[i], route[i - 1]);
+    }
+    if (accumulated_distance.back() <= preprocessor->max_cruise_distance_) {
+        return accumulated_distance.back();
+    }
+    const ChargingPlacementDp placement(*instance, *preprocessor, route, length, accumulated_distance);
+    const ChargingPlacementDp::Placement best = placement.solve();
+    return best.cost == std::numeric_limits<double>::max() ? -1.0 : best.cost;
+}
 
 double Follower::insert_station_by_all_enumeration(int* repaired_route, int& repaired_length) const {
     const int original_length = repaired_length;

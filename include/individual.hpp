@@ -6,6 +6,7 @@
 #define INDIVIDUAL_HPP
 
 #include <vector>
+#include <limits>
 #include "case.hpp"
 #include "preprocessor.hpp"
 
@@ -48,6 +49,7 @@ public:
     int* demand_sum_per_route{};      // the demand sum of all customers of each route
     double upper_cost{};              // the upper cost of the solution
     double lower_cost{};              // the lower cost of the solution
+    double shadow_lower_cost{std::numeric_limits<double>::max()}; // exact charging cost of the routes, set by the follower in shadow mode (diagnostics only)
 
     double biased_fitness{};		  // Biased fitness of the solution
     bool upper_locally_optimal{};     // MA: true if the routes are a local optimum of the upper-level RVND (reset on any change)

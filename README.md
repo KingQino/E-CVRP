@@ -54,6 +54,7 @@ See [HPC Experiments](docs/hpc.md) for details.
 - [Algorithms](docs/algorithms.md): implemented methods, stopping criteria, and benchmark context.
 - [Scripts and Experiments](docs/scripts.md): benchmark scripts, log layout, and experiment data notes.
 - [HPC Experiments](docs/hpc.md): cloning on a cluster, submitting Slurm array jobs, and collecting results.
+- [Charging-Solver Experiments](docs/frvcp.md): SE versus exact DP inside the search (`frvcp-experiments` branch).
 
 ## Data
 

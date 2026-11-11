@@ -8,6 +8,13 @@
 #include "case.hpp"
 #include "preprocessor.hpp"
 #include "individual.hpp"
+#include <array>
+#include <cstdint>
+#include <filesystem>
+#include <random>
+#include <string>
+#include <vector>
+#include <unordered_map>
 
 
 #define INFEASIBLE 1'000'000'000L
@@ -57,6 +64,52 @@ public:
     // true: evaluate both l_min and l_min + 1 and keep the cheaper placement (used by MA).
     bool se_compare_station_counts = false;
 
+    // Charging during search (Follower::run): false = simple enumeration with insert-then-remove fallback,
+    // true = exact DP (charging_placement_dp), every distance read charged as for SE.
+    bool use_optimal_charging = false;
+
+    // Shadow diagnostics (SE mode only): every route evaluated by Follower::run is also solved exactly with
+    // the DP; the reads of the shadow solve are not charged, so the search is unchanged. Statistics are
+    // kept per tenth of the evaluation budget, and a reservoir sample of routes is kept for offline tests.
+    bool shadow_optimal = false;
+    struct ShadowStage {
+        std::uint64_t calls = 0;               // Follower::run calls
+        std::uint64_t charging_routes = 0;     // routes longer than the driving range
+        std::uint64_t se_optimal = 0;          // heuristic cost equals the exact cost
+        std::uint64_t se_failed = 0;           // simple enumeration found no placement (fallback used)
+        std::uint64_t false_infeasible = 0;    // heuristic infeasible, exact feasible
+        std::uint64_t both_infeasible = 0;     // no feasible placement exists
+        double gap_sum = 0.0;                  // sum of relative gaps (%) over routes solved by the heuristic
+        double gap_max = 0.0;
+        std::array<std::uint64_t, 3> decisions{};    // decision points per kind (see record_decision)
+        std::array<std::uint64_t, 3> disagreements{};
+        std::array<std::uint64_t, 3> se_only{};      // update under heuristic costs only
+        std::array<std::uint64_t, 3> dp_only{};      // update under exact costs only
+    };
+    struct ShadowRoute {
+        int stage;
+        double heuristic_cost;  // -1 if infeasible for the heuristic
+        double exact_cost;      // -1 if infeasible
+        std::vector<int> route;
+    };
+    std::array<ShadowStage, 10> shadow_stages{};
+    std::vector<ShadowRoute> shadow_routes;  // reservoir sample
+    std::size_t shadow_route_capacity = 2000;
+    std::uint64_t shadow_routes_seen = 0;
+    std::mt19937 shadow_rng{12345};         // private engine: never touches the algorithm's random streams
+    double shadow_cost_per_route_total = 0.0;  // running sum within one Follower::run call
+    // Exact costs of routes already solved in shadow mode (key: hash of the node sequence). Unchanged routes are
+    // not solved again, and route-level statistics count each distinct route once.
+    std::unordered_map<std::uint64_t, double> shadow_cache;
+    std::size_t shadow_cache_limit = 4'000'000;
+    double shadow_best_seen = std::numeric_limits<double>::max();  // lowest exact cost of any evaluated solution
+    int shadow_stage() const;
+    // kind 0: LAHC global-best update; 1: MA choice of the best evaluated individual (update = "same choice");
+    // 2: MA update of the best complete solution so far.
+    void record_decision(int kind, bool heuristic_update, bool exact_update);
+    void write_shadow_log(const std::filesystem::path& directory, const std::string& instance_name,
+                          double heuristic_final_cost, double exact_cost_of_heuristic_final) const;
+
     Follower(Case* instance, Preprocessor* preprocessor);
     ~Follower();
 
@@ -79,6 +132,8 @@ public:
         int cur_upper_bound, const int* route, int length, const double* accumulated_distance) const;
     // Optimal charging placement for the final refinement (shortest path over any number of stations).
     double insert_station_by_all_enumeration(int* repaired_route, int& repaired_length) const;
+    // Exact charging cost of a route (evaluate only), -1 if infeasible; distance reads are charged.
+    double eval_optimal_cost(const int* route, int length) const;
 
     friend std::ostream& operator<<(std::ostream& os, const Follower& follower);
 };

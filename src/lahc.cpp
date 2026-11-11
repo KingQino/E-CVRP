@@ -34,6 +34,9 @@ Lahc::Lahc(const int seed, Case* instance, Preprocessor* preprocessor)
     initializer = new Initializer(random_engine, instance, preprocessor);
     leader = new LeaderSingle(random_engine, instance, preprocessor);
     follower = new Follower(instance, preprocessor);
+    follower->se_compare_station_counts = preprocessor->params.se_both_counts;
+    follower->use_optimal_charging = preprocessor->params.lower_solver_dp;
+    follower->shadow_optimal = preprocessor->params.shadow_dp;
 }
 
 Lahc::~Lahc() {
@@ -74,6 +77,10 @@ void Lahc::initialize_heuristic() {
         follower->run(current);
     }
 
+    if (follower->shadow_optimal) {
+        follower->record_decision(0, current->lower_cost < global_best->lower_cost,
+                                  current->shadow_lower_cost < global_best->shadow_lower_cost - 1e-9);
+    }
     if (current->lower_cost < global_best->lower_cost) {
         *global_best = *current;
     }
@@ -143,6 +150,10 @@ void Lahc::run_heuristic() {
             } else {
                 follower->run(current);
             }
+            if (follower->shadow_optimal) {
+                follower->record_decision(0, current->lower_cost < global_best->lower_cost,
+                                          current->shadow_lower_cost < global_best->shadow_lower_cost - 1e-9);
+            }
             if (current->lower_cost < global_best->lower_cost) {
                 *global_best = *current;
             }
@@ -189,6 +200,11 @@ double Lahc::run() {
         default:
             std::cerr << "Invalid stop criteria option!" << std::endl;
             break;
+    }
+
+    if (follower->shadow_optimal) {
+        follower->write_shadow_log(fs::path(preprocessor->params.k_stats_path) / this->name / instance->instance_name_ / to_string(seed),
+                                   instance->instance_name_, global_best->lower_cost, global_best->shadow_lower_cost);
     }
 
     // Optional final exact refinement for the best upper-level solution
