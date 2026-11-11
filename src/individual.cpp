@@ -73,6 +73,7 @@ std::ostream &operator<<(std::ostream &os, const PartialSolution &partial_sol) {
 Individual::Individual() {
     this->lower_cost = std::numeric_limits<double>::max();
     this->shadow_lower_cost = std::numeric_limits<double>::max();
+    this->screen_cost = std::numeric_limits<double>::max();
     this->route_cap = 0;  // Fix: Initialize route_cap to avoid undefined behavior
     this->routes = nullptr;
 }
@@ -87,6 +88,7 @@ Individual::Individual(const Individual &ind) {
     this->upper_cost = ind.upper_cost;
     this->lower_cost = ind.lower_cost;
     this->shadow_lower_cost = ind.shadow_lower_cost;
+    this->screen_cost = ind.screen_cost;
     this->biased_fitness = ind.biased_fitness;
     this->upper_locally_optimal = ind.upper_locally_optimal;
     this->routes = new int *[ind.route_cap];
@@ -125,6 +127,7 @@ Individual::Individual(Case* instance, Preprocessor* preprocessor, const int rou
     this->upper_cost = 0.;
     this->lower_cost = std::numeric_limits<double>::max();
     this->shadow_lower_cost = std::numeric_limits<double>::max();
+    this->screen_cost = std::numeric_limits<double>::max();
 }
 
 Individual::Individual(Case* instance, Preprocessor* preprocessor, const std::vector<std::vector<int>>& routes,
@@ -151,6 +154,7 @@ Individual& Individual::operator=(const Individual& other) {
     this->upper_cost = other.upper_cost;
     this->lower_cost = other.lower_cost;
     this->shadow_lower_cost = other.shadow_lower_cost;
+    this->screen_cost = other.screen_cost;
     this->biased_fitness = other.biased_fitness;
     this->upper_locally_optimal = other.upper_locally_optimal;
     for (int i = 0; i < route_cap; ++i) {
@@ -173,6 +177,7 @@ void Individual::clean() {
     this->upper_cost = 0.;
     this->lower_cost = std::numeric_limits<double>::max();
     this->shadow_lower_cost = std::numeric_limits<double>::max();
+    this->screen_cost = std::numeric_limits<double>::max();
     this->upper_locally_optimal = false;
 }
 
@@ -192,6 +197,7 @@ void Individual::load_routes(const std::vector<std::vector<int>>& routes, const 
 
     this->lower_cost = std::numeric_limits<double>::max();
     this->shadow_lower_cost = std::numeric_limits<double>::max();
+    this->screen_cost = std::numeric_limits<double>::max();
 }
 
 std::vector<int> Individual::get_chromosome() const {
@@ -219,6 +225,7 @@ void swap(Individual& a, Individual& b) noexcept {
     swap(a.upper_cost, b.upper_cost);
     swap(a.lower_cost, b.lower_cost);
     swap(a.shadow_lower_cost, b.shadow_lower_cost);
+    swap(a.screen_cost, b.screen_cost);
     swap(a.biased_fitness, b.biased_fitness);
     swap(a.upper_locally_optimal, b.upper_locally_optimal);
 }

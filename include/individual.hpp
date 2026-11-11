@@ -49,6 +49,7 @@ public:
     int* demand_sum_per_route{};      // the demand sum of all customers of each route
     double upper_cost{};              // the upper cost of the solution
     double lower_cost{};              // the lower cost of the solution
+    double screen_cost{std::numeric_limits<double>::max()};       // heuristic (SE) cost used to screen candidates in -lower_solver verify
     double shadow_lower_cost{std::numeric_limits<double>::max()}; // exact charging cost of the routes, set by the follower in shadow mode (diagnostics only)
 
     double biased_fitness{};		  // Biased fitness of the solution

@@ -336,7 +336,7 @@ void Ma::run_generation() {
         const bool can_reuse_lower_elite = individual == unchanged_lower_elite && individual->lower_cost < INFEASIBLE;
         if (!can_reuse_lower_elite) {
             ++follower_runs;
-            follower->verify_threshold = verified_best->lower_cost * (1.0 + preprocessor->params.verify_margin);
+            follower->verify_threshold = verified_best->screen_cost * (1.0 + preprocessor->params.verify_margin);
             follower->run(individual.get());
         }
         evaluated_complete_solutions.push_back(individual);

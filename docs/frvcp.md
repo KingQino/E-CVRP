@@ -6,8 +6,8 @@ This branch (`frvcp-experiments`) compares charging methods inside the bilevel s
 
 | Option | Default | Meaning |
 |---|---|---|
-| `-lower_solver se\|dp\|verify` | `se` | charging method during the search. `dp` solves every charging problem exactly; its route-to-station distance reads are charged like SE's. `verify` uses SE, then re-solves a candidate exactly (reads charged) when its SE cost, or its uncharged length if SE fails, is within `-verify_margin` of the best solution found |
-| `-verify_margin` | `0.02` | relative margin for `verify`; the experiments use 0.005 and 0.02 |
+| `-lower_solver se\|dp\|verify` | `se` | charging method during the search. `dp` solves every charging problem exactly; its route-to-station distance reads are charged like SE's. `verify` uses SE, then re-solves a candidate exactly (reads charged) when its SE cost, or its uncharged length if SE fails, is within `-verify_margin` of the incumbent's heuristic cost (heuristic against heuristic; the incumbent is then replaced only on exact costs) |
+| `-verify_margin` | `0.02` | relative margin for `verify`; the experiments use 0 and 0.005 |
 | `-shadow_dp 0\|1` | `0` | SE runs only: also solve every charging problem exactly, with the reads restored afterwards, so the search and its budget are unchanged. Writes diagnostics (below) |
 | `-se_both_counts 0\|1` | `0` | SE tries both station counts l_min and l_min + 1. MA always does; b-LAHC's published setting is `0` (first feasible count) |
 | `-refine 0\|1` | `1` | exact DP on the final solution |
@@ -46,9 +46,20 @@ export ECVRP_TIME_LIMIT=08:00:00
 ./source/scripts/hpc/setup-all.sh
 ./source/scripts/hpc/submit-all.sh
 ./source/scripts/hpc/check-progress.sh          # --resubmit for missing instances
-python3 source/scripts/frvcp/summarize_frvcp.py . frvcp-summary LAHC-SE1,LAHC-SE1-SHADOW,LAHC-SE2-SHADOW,LAHC-DP,LAHC-VERIFY,LAHC-VERIFY-02
+python3 source/scripts/frvcp/summarize_frvcp.py . frvcp-summary LAHC-SE1,LAHC-SE1-SHADOW,LAHC-SE2-SHADOW,LAHC-DP,LAHC-VERIFY-M0,LAHC-VERIFY-M005
 ```
 
 Keep the `export` lines in every new shell. Shadow and DP runs are slower in wall-clock time than SE runs (up to about 25 times for b-LAHC), hence the 8-hour limit. On your computer, `./scripts/hpc/download-results.sh --summary` downloads the solutions, `frvcp-summary/` and the `shadow*` files.
 
+Runs made with commit fda5b4b (ids `LAHC-VERIFY`, `LAHC-VERIFY-02`) compared the heuristic cost of each candidate with the exact cost of a verified incumbent; after the first verification few candidates passed the screen, so those results understate the variant. To rerun only the corrected variant, use `experiments-verify.tsv`.
+
 For the BMA rows, use a separate directory with `export ECVRP_EXPERIMENTS=$PWD/source/scripts/frvcp/experiments-ma.tsv` and the ids `MA-SE,MA-SE-SHADOW,MA-DP`.
+
+## Letter tables
+
+`scripts/frvcp/analyse_letter.py <results_dir> data <out_dir> [route_bench.csv]` builds the search-level table (gap to H-DP and win/tie/loss per group, duplicate instances removed) and, given a route benchmark, the route-level table. The benchmark times SE (first count), SE (both counts) and the DP on the routes sampled by shadow runs (`shadow_routes.*.csv`, columns `instance,seed,stage,heuristic_cost,exact_cost,route`):
+
+```shell
+g++ -std=c++20 -O3 -fopenmp -Iinclude -Iexternal/include scripts/frvcp/frvcp_bench.cpp $(ls src/*.cpp) -o frvcp_bench
+./frvcp_bench data route_sample.csv route_bench.csv
+```

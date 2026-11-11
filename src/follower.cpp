@@ -296,6 +296,7 @@ void Follower::run(Individual* ind) {
                 }
             }
         }
+        ind->screen_cost = optimistic;
         if (optimistic <= verify_threshold) {
             ++verify_calls;
             const bool was_infeasible = lower_cost >= INFEASIBLE;

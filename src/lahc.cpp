@@ -71,12 +71,12 @@ void Lahc::initialize_heuristic() {
 
     if (enable_logging) {
         const auto t0 = std::chrono::high_resolution_clock::now();
-        follower->verify_threshold = global_best->lower_cost * (1.0 + preprocessor->params.verify_margin);
+        follower->verify_threshold = global_best->screen_cost * (1.0 + preprocessor->params.verify_margin);
         follower->run(current);
         prof_follower_run_sec += std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - t0).count();
         ++prof_follower_run_calls;
     } else {
-        follower->verify_threshold = global_best->lower_cost * (1.0 + preprocessor->params.verify_margin);
+        follower->verify_threshold = global_best->screen_cost * (1.0 + preprocessor->params.verify_margin);
         follower->run(current);
     }
 
@@ -147,12 +147,12 @@ void Lahc::run_heuristic() {
         if (has_moved && candidate_cost < global_best_upper_cost * low_opt_trigger_margin) {
             if (enable_logging) {
                 const auto t0 = std::chrono::high_resolution_clock::now();
-                follower->verify_threshold = global_best->lower_cost * (1.0 + preprocessor->params.verify_margin);
+                follower->verify_threshold = global_best->screen_cost * (1.0 + preprocessor->params.verify_margin);
                 follower->run(current);
                 prof_follower_run_sec += std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - t0).count();
                 ++prof_follower_run_calls;
             } else {
-                follower->verify_threshold = global_best->lower_cost * (1.0 + preprocessor->params.verify_margin);
+                follower->verify_threshold = global_best->screen_cost * (1.0 + preprocessor->params.verify_margin);
                 follower->run(current);
             }
             if (follower->shadow_optimal) {
