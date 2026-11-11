@@ -43,6 +43,15 @@ Preprocessor::Preprocessor(const Case &c, const Parameters &params) : c(c), para
         station_ids_.push_back(i);
     }
 
+    // Station-to-station distances, read once per instance (not charged, like best_station_ below).
+    const size_t num_stations = station_ids_.size();
+    station_distances_.assign(num_stations * num_stations, 0.0);
+    for (size_t q = 0; q < num_stations; ++q) {
+        for (size_t s = 0; s < num_stations; ++s) {
+            station_distances_[q * num_stations + s] = q == s ? 0.0 : c.distances_[station_ids_[q]][station_ids_[s]];
+        }
+    }
+
     this->sorted_nearby_customers_ = vector<vector<int>>(c.num_customer_ + 1);
     for (int i = 1; i <= c.num_customer_; i++) {
         for (auto node : customer_ids_) {

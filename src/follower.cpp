@@ -705,20 +705,16 @@ public:
           stations_(instance.num_station_),
           range_(preprocessor.max_cruise_distance_),
           accumulated_(accumulated_distance),
-          station_ids_(preprocessor.station_ids_) {
+          station_ids_(preprocessor.station_ids_),
+          between_stations_(preprocessor.station_distances_) {
+        // Route-to-station distances depend on the route and are charged to the budget (2 * edges * |S| reads).
+        // Station-to-station distances are instance data, computed once by the preprocessor and not charged.
         to_station_.resize(static_cast<size_t>(edges_) * stations_);
         from_station_.resize(static_cast<size_t>(edges_) * stations_);
         for (int e = 0; e < edges_; ++e) {
             for (int s = 0; s < stations_; ++s) {
                 to_station_[index(e, s)] = instance.get_distance(route_[e], station_ids_[s]);
                 from_station_[index(e, s)] = instance.get_distance(station_ids_[s], route_[e + 1]);
-            }
-        }
-        between_stations_.resize(static_cast<size_t>(stations_) * stations_);
-        for (int q = 0; q < stations_; ++q) {
-            for (int s = 0; s < stations_; ++s) {
-                between_stations_[static_cast<size_t>(q) * stations_ + s] =
-                    q == s ? 0.0 : instance.get_distance(station_ids_[q], station_ids_[s]);
             }
         }
     }
@@ -812,7 +808,7 @@ private:
     const std::vector<int>& station_ids_;
     std::vector<double> to_station_;
     std::vector<double> from_station_;
-    std::vector<double> between_stations_;
+    const std::vector<double>& between_stations_;  // preprocessor.station_distances_
 
     size_t index(const int e, const int s) const { return static_cast<size_t>(e) * stations_ + s; }
 

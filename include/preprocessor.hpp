@@ -42,6 +42,7 @@ public:
 
     std::vector<int> customer_ids_;      // the id of customers
     std::vector<int> station_ids_;       // the id of charging stations
+    std::vector<double> station_distances_; // station-to-station distances (row-major, |S| x |S|), instance preprocessing like best_station_
 
     std::vector<std::vector<int>> sorted_nearby_customers_;   // For Hien's clustering usage only. For each customer, a list of customer nodes from near to far, e.g., {index 1: [5,3,2,6], index 2: [], ...}
     std::vector<std::vector<int>> best_station_;              // For each pair of customers, the best station to visit, i.e., the station that minimizes the extra cost
