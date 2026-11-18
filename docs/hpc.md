@@ -174,6 +174,19 @@ MA-STATIC-STRONG	ma	-low_margin 1.05 -ma_ls_policy static -ma_static_action stro
 
 Each id gets its own directory and Slurm array, so variants of the same algorithm do not overwrite each other.
 
+**SWAP\* ablation.** `scripts/ablation/swap-star.tsv` runs the online MA with and without SWAP\* (`-ma_swap_star 1|0`), with Elite Unrestricted switched off (`-ma_unrestricted_credit_rho 0.0`). Without SWAP\*, every RVND session (weak, strong and unrestricted) draws from the other seven neighbourhoods; everything else, including seeds and the budget, is unchanged, and `-ma_swap_star 1` reproduces the default run exactly. In a new experiment directory:
+
+```shell
+git clone -b swapstar-ablation git@github.com:KingQino/E-CVRP.git source
+export ECVRP_EXPERIMENTS=$PWD/source/scripts/ablation/swap-star.tsv
+./source/scripts/hpc/setup-all.sh
+./source/scripts/hpc/submit-all.sh
+./source/scripts/hpc/check-progress.sh        # --resubmit for missing instances
+./source/scripts/hpc/summarize-results.sh
+```
+
+`local-search-operators.tsv` of each run shows the calls, accepted moves and evaluations of every operator; its `swap_star` rows are zero in `MA-NO-SWAPSTAR`, and `run-configuration.tsv` records the setting in its `swap_star` column.
+
 **Fewer instances.** Comment out lines in `instances.txt`, or point `ECVRP_INSTANCES` to another list. Array indices refer to the non-comment lines, starting at 0.
 
 **A separate study.** Use a new directory, with its own clone, for each study (for example one for max-evals and one for max-time). That way results never mix.

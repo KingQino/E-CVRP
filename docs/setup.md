@@ -93,6 +93,7 @@ Options:
   -ma_unrestricted_credit_rho [double] : MA Elite Unrestricted credit per ordinary LS distance call, online policy only (default: 0.20)
   -ma_ls_depth [d1..d6]                : MA local-search depth profile (default: d5)
   -ma_action_cost_weight [double]      : MA weight of the cost term in the online action score (default: 0.02)
+  -ma_swap_star [0|1]                  : MA uses SWAP* as an RVND neighbourhood in every local search (default: 1)
   -alns_start_dev [double]             : TwoStageAlns initial record-deviation gap (default: 0.0167)
   -alns_decay [double]                 : TwoStageAlns adaptive-weight decay (default: 0.99)
   -alns_score_acc [double]             : TwoStageAlns score for accepted solutions (default: 2.0)

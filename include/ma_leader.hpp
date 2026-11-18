@@ -99,6 +99,8 @@ struct LocalSearchWorkspace {
     std::array<int, 2> changed_routes{-1, -1};
     int changed_route_count{};
     bool all_routes_changed{};
+    // Neighbourhood set of every RVND session that uses this workspace: false leaves SWAP* out (ablation).
+    bool swap_star_enabled{true};
 };
 
 class MaLeader {

@@ -52,6 +52,18 @@ constexpr std::array<LocalSearchOperator, 8> kEightOperators = {
     LocalSearchOperator::TwoOptStarHeadToTail,
 };
 
+// RVND neighbourhood list of a session: the eight operators, without SWAP* if the workspace disables it.
+void assign_active_operators(std::vector<LocalSearchOperator>& active_operators,
+                             const LocalSearchWorkspace& workspace) {
+    active_operators.clear();
+    for (const LocalSearchOperator local_search_operator : kEightOperators) {
+        if (local_search_operator == LocalSearchOperator::SwapStar && !workspace.swap_star_enabled) {
+            continue;
+        }
+        active_operators.push_back(local_search_operator);
+    }
+}
+
 Neighborhood neighborhood_for_operator(
     LocalSearchOperator local_search_operator) {
     switch (local_search_operator) {
@@ -1700,9 +1712,7 @@ void MaLeader::begin_eight_neighborhood_rvnd_one_move_session(
     session.total_accepted_moves = 0;
     session.total_neighborhood_calls = 0;
     session.total_distance_calls = 0;
-    session.active_operators.assign(
-        kEightOperators.begin(),
-        kEightOperators.end());
+    assign_active_operators(session.active_operators, workspace);
 }
 
 LocalSearchResult MaLeader::continue_eight_neighborhood_rvnd_one_move_session(
@@ -1783,9 +1793,7 @@ LocalSearchResult MaLeader::continue_eight_neighborhood_rvnd_one_move_session(
                 && individual.upper_cost <= gamma_upper_bound) {
                 ++operator_stats.gamma_crosses;
             }
-            session.active_operators.assign(
-                kEightOperators.begin(),
-                kEightOperators.end());
+            assign_active_operators(session.active_operators, workspace);
         } else {
             session.active_operators.erase(
                 session.active_operators.begin() + selected_index);

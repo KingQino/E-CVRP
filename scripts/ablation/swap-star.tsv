@@ -1,0 +1,3 @@
+id	algorithm	arguments
+MA-SWAPSTAR	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_swap_star 1
+MA-NO-SWAPSTAR	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_swap_star 0

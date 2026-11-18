@@ -74,6 +74,7 @@ public:
     LocalSearchPolicy ls_policy;
     LocalSearchAction static_action;            // action of the static policy
     bool static_unrestricted;                   // static policy uses unrestricted RVND instead
+    bool swap_star;                             // SWAP* is an RVND neighbourhood (false: ablation)
     LocalSearchDepthProfile ls_depth_profile;
     LocalSearchDepthConfig ls_depth_config;
     double action_cost_weight;

@@ -160,6 +160,7 @@ void CommandLine::parse_parameters(Parameters& params) const {
         params.ma_verified_upper_ratio = get_double("ma_verified_upper_ratio", params.ma_verified_upper_ratio);
         params.ma_pure_immigrant_ratio = get_double("ma_pure_immigrant_ratio", params.ma_pure_immigrant_ratio);
         params.ma_unrestricted_credit_rho = get_double("ma_unrestricted_credit_rho", params.ma_unrestricted_credit_rho);
+        params.ma_swap_star = get_bool("ma_swap_star", params.ma_swap_star);
         params.ma_ls_depth = parse_ma_ls_depth(get_string("ma_ls_depth", local_search_depth_profile_name(params.ma_ls_depth)));
         params.ma_action_cost_weight = get_double("ma_action_cost_weight", params.ma_action_cost_weight);
         // TwoStageAlns; the basin_* names are accepted as legacy aliases.
@@ -216,6 +217,7 @@ void CommandLine::display_help() {
               << "  -ma_verified_upper_ratio [double]    : MA share of x* x parent-pool offspring, x* = best complete solution so far (default: 0.05)\n"
               << "  -ma_pure_immigrant_ratio [double]    : MA share of random-immigrant offspring (default: 0.10)\n"
               << "  -ma_unrestricted_credit_rho [double] : MA Elite Unrestricted credit per ordinary LS distance call, online policy only (default: 0.20)\n"
+              << "  -ma_swap_star [0|1]                  : MA uses SWAP* as an RVND neighbourhood in every local search (default: 1)\n"
               << "  -ma_ls_depth [d1..d6]                : MA local-search depth profile (default: d5)\n"
               << "  -ma_action_cost_weight [double]      : MA weight of the cost term in the online action score (default: 0.02)\n"
               << "  -alns_start_dev [double]             : TwoStageAlns initial record-deviation gap (default: 0.0167)\n"

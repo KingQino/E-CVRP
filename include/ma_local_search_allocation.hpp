@@ -201,7 +201,8 @@ public:
         std::mt19937& allocation_engine,
         std::vector<LocalSearchWorkspace>& workspaces,
         const OnlineActionLearner& learner,
-        const LocalSearchDepthConfig& depth_config = {});
+        const LocalSearchDepthConfig& depth_config = {},
+        bool swap_star_enabled = true);
 
     static void assign_parent_use_feedback(
         LocalSearchAllocationRun& run,

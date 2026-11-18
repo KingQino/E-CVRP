@@ -101,6 +101,9 @@ Ma::Ma(const int seed, Case* instance, Preprocessor* preprocessor)
     ls_depth_config = local_search_depth_config(params.ma_ls_depth);
     action_cost_weight = params.ma_action_cost_weight;
     unrestricted_credit_rho = params.ma_unrestricted_credit_rho;
+    swap_star = params.ma_swap_star;
+    local_search_workspace.swap_star_enabled = swap_star;
+    elite_unrestricted_workspace.swap_star_enabled = swap_star;
     parent_pool_ratio = params.ma_parent_pool_ratio;
     verified_upper_ratio = params.ma_verified_upper_ratio;
     pure_immigrant_ratio = params.ma_pure_immigrant_ratio;
@@ -287,7 +290,7 @@ void Ma::run_generation() {
             population, unchanged_lower_elite, *instance, generation, ls_policy,
             frozen_upper_reference, frozen_trigger_upper_bound, budget_progress, upper_stagnation,
             lower_stagnation, population_dispersion, recent_gamma_entry_rate, evaluation_limit_distance_calls,
-            local_search_engine, allocation_engine, allocation_workspaces, action_learner, ls_depth_config);
+            local_search_engine, allocation_engine, allocation_workspaces, action_learner, ls_depth_config, swap_star);
         generation_operator_stats = allocation_run.operator_stats;
         normal_ls_distance_calls = allocation_distance_calls(allocation_run);
         if (elite_unrestricted_enabled()) {
@@ -587,7 +590,7 @@ void Ma::open_log_for_local_search() {
     std::ofstream log_configuration(directory / "run-configuration.tsv");
     log_configuration << "seed\tgamma\tls_policy\tstatic_action\tstatic_unrestricted\tunrestricted_credit_rho\tls_depth\t"
                          "weak_move_fraction\tmedium_move_fraction\tstrong_move_fraction\t"
-                         "strong_weak_call_multiplier\taction_cost_weight\n";
+                         "strong_weak_call_multiplier\taction_cost_weight\tswap_star\n";
     log_configuration << std::setprecision(12)
                       << seed << "\t"
                       << gamma << "\t"
@@ -600,7 +603,8 @@ void Ma::open_log_for_local_search() {
                       << ls_depth_config.medium_move_fraction << "\t"
                       << ls_depth_config.strong_move_fraction << "\t"
                       << ls_depth_config.strong_weak_call_multiplier << "\t"
-                      << action_cost_weight << "\n";
+                      << action_cost_weight << "\t"
+                      << swap_star << "\n";
 }
 
 void Ma::flush_local_search_log() {

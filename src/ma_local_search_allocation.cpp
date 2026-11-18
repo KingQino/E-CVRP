@@ -521,7 +521,8 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
     std::mt19937& allocation_engine,
     std::vector<LocalSearchWorkspace>& workspaces,
     const OnlineActionLearner& learner,
-    const LocalSearchDepthConfig& depth_config) {
+    const LocalSearchDepthConfig& depth_config,
+    const bool swap_star_enabled) {
     if (policy == LocalSearchPolicy::Static) {
         throw std::logic_error(
             "static local search does not use the allocation runner");
@@ -534,6 +535,9 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
         population.size());
     if (workspaces.size() < required_workspaces) {
         workspaces.resize(required_workspaces);
+    }
+    for (auto& workspace : workspaces) {
+        workspace.swap_star_enabled = swap_star_enabled;
     }
 
     std::vector<std::shared_ptr<Individual>> search_candidates;

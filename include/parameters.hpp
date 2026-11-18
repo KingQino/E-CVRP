@@ -44,6 +44,7 @@ struct Parameters {
     double ma_verified_upper_ratio;     // MA: share of x* x parent-pool offspring (x*: best complete solution so far)
     double ma_pure_immigrant_ratio;     // MA: share of pure random-immigrant offspring
     double ma_unrestricted_credit_rho;  // MA: Elite Unrestricted credit earned per ordinary local-search distance call (rho)
+    bool ma_swap_star;                  // MA: SWAP* is one of the RVND neighbourhoods (false: ablation without SWAP*)
     LocalSearchDepthProfile ma_ls_depth;// MA: coupled weak/medium/strong depth profile
     double ma_action_cost_weight;       // MA: weight of the predicted-cost term in the online learner's action score
 
@@ -88,6 +89,7 @@ struct Parameters {
         ma_verified_upper_ratio = 0.05;
         ma_pure_immigrant_ratio = 0.10;
         ma_unrestricted_credit_rho = 0.20;
+        ma_swap_star = true;
         ma_ls_depth = LocalSearchDepthProfile::D5;
         ma_action_cost_weight = 0.02;
 

@@ -8,6 +8,9 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <memory>
 #include <numeric>
 #include <random>
@@ -243,4 +246,69 @@ TEST_F(MaTest, AllAllocationPoliciesRun) {
         EXPECT_LT(cost, INFEASIBLE) << local_search_policy_name(policy);
         expect_valid_upper_solution(*search.verified_best, fresh_instance);
     }
+}
+
+// -ma_swap_star 0: SWAP* is never called, and the remaining seven operators still reach a local optimum.
+TEST_F(MaTest, SwapStarCanBeLeftOutOfTheNeighbourhoods) {
+    const Parameters params = make_ma_params();
+    auto preprocessor = make_preprocessor(params, 1e9);
+    const auto swap_star = static_cast<std::size_t>(LocalSearchOperator::SwapStar);
+    for (const bool enabled : {true, false}) {
+        std::mt19937 engine(3);
+        auto ind = make_random_individual(*preprocessor, engine);
+        LocalSearchWorkspace workspace;
+        workspace.swap_star_enabled = enabled;
+        const LocalSearchResult result = MaLeader::improve_unrestricted(*ind, *instance, engine, workspace);
+        EXPECT_TRUE(result.reached_local_optimum);
+        if (enabled) {
+            EXPECT_GT(result.operator_stats[swap_star].calls, 0);
+        } else {
+            EXPECT_EQ(result.operator_stats[swap_star].calls, 0);
+        }
+        for (std::size_t i = 0; i < LOCAL_SEARCH_OPERATOR_COUNT; ++i) {
+            if (i != swap_star) EXPECT_GT(result.operator_stats[i].calls, 0) << MaLeader::operator_name(static_cast<LocalSearchOperator>(i));
+        }
+        expect_valid_upper_solution(*ind, *instance);
+    }
+}
+
+// The option reaches every local search of a full online run (allocation workspaces included).
+TEST_F(MaTest, SwapStarOptionReachesTheOnlineRun) {
+    const fs::path stats = fs::temp_directory_path() / "ecvrp_swap_star_test";
+    for (const bool enabled : {true, false}) {
+        fs::remove_all(stats);
+        Case fresh_instance((fs::path(__FILE__).parent_path().parent_path() / "data").string(), "E-n29-k4-s7.evrp");
+        Parameters params = make_ma_params();
+        params.ma_pop_size = 50;
+        params.ma_ls_policy = LocalSearchPolicy::OnlineIndividual;
+        params.ma_unrestricted_credit_rho = 0.0;
+        params.ma_swap_star = enabled;
+        params.enable_logging = true;
+        params.k_stats_path = stats.string();
+        auto preprocessor = std::make_unique<Preprocessor>(fresh_instance, params);
+        preprocessor->max_evals_ = 5'000.0;
+        Ma search(params.seed, &fresh_instance, preprocessor.get());
+        EXPECT_LT(search.run(), INFEASIBLE);
+        std::uint64_t swap_star_calls = 0, other_calls = 0;
+        for (const auto& entry : fs::recursive_directory_iterator(stats)) {
+            if (entry.path().filename() != "local-search-operators.tsv") continue;
+            std::ifstream in(entry.path());
+            std::string line;
+            std::getline(in, line);
+            while (std::getline(in, line)) {
+                std::istringstream fields(line);
+                std::string iter, name;
+                std::uint64_t calls = 0;
+                fields >> iter >> name >> calls;
+                (name == "swap_star" ? swap_star_calls : other_calls) += calls;
+            }
+        }
+        EXPECT_GT(other_calls, 0u);
+        if (enabled) {
+            EXPECT_GT(swap_star_calls, 0u);
+        } else {
+            EXPECT_EQ(swap_star_calls, 0u);
+        }
+    }
+    fs::remove_all(stats);
 }
