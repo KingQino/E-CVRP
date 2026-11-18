@@ -1,0 +1,3 @@
+id	algorithm	arguments
+MATCHED-RANDOM	ma	-low_margin 1.05 -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_ls_policy matched_random -ma_action_shares_file @SHARES@
+RAA-M	ma	-low_margin 1.05 -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_ls_policy rank -ma_action_shares_file @SHARES@

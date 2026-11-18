@@ -20,17 +20,11 @@ namespace {
 constexpr double kRidge = 1.0;
 constexpr double kExplorationScale = 0.08;
 constexpr double kRandomExplorationRate = 0.05;
-constexpr double kLowerRewardWeight = 0.45;
-constexpr double kGammaRewardWeight = 0.25;
-constexpr double kParentRewardWeight = 0.20;
 constexpr double kContinuationGainSignalWeight = 0.10;
 constexpr double kContinuationGainScale = 100.0;
 constexpr std::size_t kWorkspaceBatchSize = 10;
 constexpr double kMediumSelectionRatio = 0.80;
 constexpr double kStrongSelectionRatio = 0.50;
-// Quality-only shared configuration's confirmed aggregate online allocation.
-constexpr double kMatchedMediumRatio = 0.0348226126187;
-constexpr double kMatchedStrongRatio = 0.2088046423357;
 
 double bounded_nonnegative(double value) {
     const double nonnegative = std::max(0.0, value);
@@ -289,6 +283,59 @@ double OnlineActionLearner::action_cost_weight() const {
     return action_cost_weight_value;
 }
 
+void OnlineActionLearner::set_reward_weights(const LocalSearchRewardWeights& weights) {
+    double sum = 0.0;
+    for (const double weight : weights) {
+        if (!std::isfinite(weight) || weight < 0.0) {
+            throw std::invalid_argument("reward weights must be finite and non-negative");
+        }
+        sum += weight;
+    }
+    if (sum > 1.0 + 1e-9) {
+        throw std::invalid_argument("reward weights must sum to at most 1");
+    }
+    reward_weight_values = weights;
+}
+
+const LocalSearchRewardWeights& OnlineActionLearner::reward_weights() const {
+    return reward_weight_values;
+}
+
+void OnlineActionLearner::set_context_mode(LocalSearchContextMode mode) {
+    context_mode_value = mode;
+}
+
+LocalSearchContextMode OnlineActionLearner::context_mode() const {
+    return context_mode_value;
+}
+
+void OnlineActionLearner::set_frozen(bool frozen) {
+    frozen_value = frozen;
+}
+
+bool OnlineActionLearner::frozen() const {
+    return frozen_value;
+}
+
+LocalSearchAllocationContext OnlineActionLearner::model_context(
+    const LocalSearchAllocationContext& context) const {
+    switch (context_mode_value) {
+        case LocalSearchContextMode::Full:
+            return context;
+        case LocalSearchContextMode::NoProbe: {
+            LocalSearchAllocationContext masked = context;
+            masked.probe_success_rate = 0.0;
+            masked.probe_relative_gain = 0.0;
+            masked.probe_efficiency = 0.0;
+            masked.probe_cost = 0.0;
+            return masked;
+        }
+        case LocalSearchContextMode::None:
+            return {};  // all features 0: only the constant term remains
+    }
+    throw std::logic_error("unknown context mode");
+}
+
 LocalSearchActionDecision OnlineActionLearner::select(
     const LocalSearchAllocationContext& context,
     int generation,
@@ -346,13 +393,17 @@ void OnlineActionLearner::update(
     LocalSearchAction action,
     double reward,
     double incremental_cost_units) {
+    if (frozen_value) {
+        return;  // frozen models: no update of the reward and cost models or of the observation counts
+    }
     const std::size_t action_index =
         LocalSearchAllocationRunner::action_index(action);
+    const LocalSearchAllocationContext seen = model_context(context);
     reward_models[action_index].update(
-        context,
+        seen,
         std::clamp(reward, 0.0, 1.0));
     log_cost_models[action_index].update(
-        context,
+        seen,
         std::log1p(std::max(0.0, incremental_cost_units)));
     ++observation_counts[action_index];
 }
@@ -474,8 +525,9 @@ double OnlineActionLearner::score(
     LocalSearchAction action) const {
     const std::size_t action_index =
         LocalSearchAllocationRunner::action_index(action);
+    const LocalSearchAllocationContext seen = model_context(context);
     const LinearUcbEstimate reward_estimate =
-        reward_models[action_index].estimate(context);
+        reward_models[action_index].estimate(seen);
     const double optimistic_reward = std::max(
         0.0,
         reward_estimate.prediction
@@ -485,7 +537,7 @@ double OnlineActionLearner::score(
         default_incremental_cost_units()[action_index];
     if (observation_counts[action_index] > 0) {
         const LinearUcbEstimate cost_estimate =
-            log_cost_models[action_index].estimate(context);
+            log_cost_models[action_index].estimate(seen);
         estimated_cost = std::max(
             0.0,
             std::expm1(std::clamp(
@@ -522,7 +574,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
     std::vector<LocalSearchWorkspace>& workspaces,
     const OnlineActionLearner& learner,
     const LocalSearchDepthConfig& depth_config,
-    const bool swap_star_enabled) {
+    const LocalSearchAllocationOptions& options) {
     if (policy == LocalSearchPolicy::Static) {
         throw std::logic_error(
             "static local search does not use the allocation runner");
@@ -537,7 +589,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
         workspaces.resize(required_workspaces);
     }
     for (auto& workspace : workspaces) {
-        workspace.swap_star_enabled = swap_star_enabled;
+        workspace.swap_star_enabled = options.swap_star_enabled;
     }
 
     std::vector<std::shared_ptr<Individual>> search_candidates;
@@ -552,34 +604,94 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
         }
     }
 
-    std::vector<LocalSearchAction> matched_actions;
-    if (policy == LocalSearchPolicy::MatchedRandom) {
-        const std::size_t candidate_count = search_candidates.size();
-        const std::size_t strong_count = std::min(
-            candidate_count,
-            static_cast<std::size_t>(std::lround(
-                static_cast<double>(candidate_count)
-                * kMatchedStrongRatio)));
-        const std::size_t medium_count = std::min(
-            candidate_count - strong_count,
-            static_cast<std::size_t>(std::lround(
-                static_cast<double>(candidate_count)
-                * kMatchedMediumRatio)));
-        matched_actions.assign(
-            candidate_count - medium_count - strong_count,
-            LocalSearchAction::Weak);
-        matched_actions.insert(
-            matched_actions.end(),
-            medium_count,
-            LocalSearchAction::Medium);
-        matched_actions.insert(
-            matched_actions.end(),
-            strong_count,
-            LocalSearchAction::Strong);
-        std::shuffle(
-            matched_actions.begin(),
-            matched_actions.end(),
-            allocation_engine);
+    // Matched random and rank allocation decide over the whole generation: every candidate is probed first, with its
+    // own workspace (its session stays open), then the actions are assigned among the candidates still eligible.
+    if (policy == LocalSearchPolicy::MatchedRandom || policy == LocalSearchPolicy::Rank) {
+        if (workspaces.size() < search_candidates.size()) {
+            workspaces.resize(search_candidates.size());
+            for (auto& workspace : workspaces) {
+                workspace.swap_star_enabled = options.swap_star_enabled;
+            }
+        }
+        std::vector<std::size_t> eligible;
+        for (std::size_t index = 0; index < search_candidates.size(); ++index) {
+            AllocatedLocalSearchRecord record;
+            record.individual = search_candidates[index];
+            record.cost_before_weak = record.individual->upper_cost;
+            record.strong_move_limit = MaLeader::move_limit_for_action(
+                *record.individual, instance, LocalSearchAction::Strong, depth_config);
+            MaLeader::begin_eight_neighborhood_rvnd_one_move_session(
+                *record.individual, record.session, workspaces[index]);
+            const int weak_limit = MaLeader::move_limit_for_action(
+                *record.individual, instance, LocalSearchAction::Weak, depth_config);
+            record.weak_result = MaLeader::continue_eight_neighborhood_rvnd_one_move_session(
+                *record.individual, instance, local_search_engine, record.session, weak_limit,
+                workspaces[index], trigger_upper_bound);
+            record.cost_after_weak = record.individual->upper_cost;
+            record.strong_distance_call_limit = MaLeader::strong_distance_call_limit(
+                record.weak_result.distance_calls_used, depth_config);
+            record.cost_after_terminal = record.cost_after_weak;
+            record.total_result = record.weak_result;
+            record.context = make_context(
+                *record.individual, upper_reference, trigger_upper_bound, budget_progress, upper_stagnation,
+                lower_stagnation, population_dispersion, recent_gamma_rate, record.weak_result,
+                evaluation_limit_distance_calls, population.size());
+            if (record.weak_result.reached_local_optimum) {
+                record.terminal_action = LocalSearchAction::Weak;
+                record.forced_local_optimum = true;
+            } else {
+                eligible.push_back(index);
+            }
+            run.records.push_back(std::move(record));
+        }
+
+        const std::array<std::size_t, 3> counts = action_counts(eligible.size(), options.action_shares);
+        std::vector<LocalSearchAction> actions;
+        actions.reserve(eligible.size());
+        if (policy == LocalSearchPolicy::Rank) {
+            // Strongest actions to the highest probe efficiency; ties to the lower route cost after the probe.
+            std::stable_sort(eligible.begin(), eligible.end(), [&](std::size_t first, std::size_t second) {
+                const auto& a = run.records[first];
+                const auto& b = run.records[second];
+                if (a.context.probe_efficiency != b.context.probe_efficiency) {
+                    return a.context.probe_efficiency > b.context.probe_efficiency;
+                }
+                return a.cost_after_weak < b.cost_after_weak;
+            });
+            actions.insert(actions.end(), counts[2], LocalSearchAction::Strong);
+            actions.insert(actions.end(), counts[1], LocalSearchAction::Medium);
+            actions.insert(actions.end(), counts[0], LocalSearchAction::Weak);
+        } else {
+            actions.insert(actions.end(), counts[0], LocalSearchAction::Weak);
+            actions.insert(actions.end(), counts[1], LocalSearchAction::Medium);
+            actions.insert(actions.end(), counts[2], LocalSearchAction::Strong);
+            std::shuffle(actions.begin(), actions.end(), allocation_engine);
+        }
+        for (std::size_t position = 0; position < eligible.size(); ++position) {
+            run.records[eligible[position]].terminal_action = actions[position];
+        }
+
+        // Continuations in candidate order.
+        for (std::size_t index = 0; index < run.records.size(); ++index) {
+            auto& record = run.records[index];
+            if (!record.forced_local_optimum && record.terminal_action != LocalSearchAction::Weak) {
+                const bool use_strong = record.terminal_action == LocalSearchAction::Strong;
+                const int move_limit = use_strong
+                    ? record.strong_move_limit
+                    : MaLeader::move_limit_for_action(
+                        *record.individual, instance, LocalSearchAction::Medium, depth_config);
+                record.continuation_result = MaLeader::continue_eight_neighborhood_rvnd_one_move_session(
+                    *record.individual, instance, local_search_engine, record.session, move_limit,
+                    workspaces[index], trigger_upper_bound,
+                    use_strong ? record.strong_distance_call_limit : std::numeric_limits<std::uint64_t>::max());
+                record.total_result = combine_results(
+                    record.weak_result, record.continuation_result, record.cost_before_weak,
+                    record.individual->upper_cost);
+            }
+            finish_record(record, trigger_upper_bound);
+        }
+        aggregate_run_operator_stats(run);
+        return run;
     }
 
     for (std::size_t batch_start = 0;
@@ -648,8 +760,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
             run.records.push_back(std::move(record));
         }
 
-        if (policy == LocalSearchPolicy::MatchedRandom
-            || policy == LocalSearchPolicy::OnlineIndividual) {
+        if (policy == LocalSearchPolicy::OnlineIndividual) {
             for (std::size_t local_index = 0;
                  local_index < batch_size;
                  ++local_index) {
@@ -663,16 +774,10 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
                     continue;
                 }
 
-                LocalSearchActionDecision decision;
-                if (policy == LocalSearchPolicy::MatchedRandom) {
-                    decision.action =
-                        matched_actions[batch_start + local_index];
-                } else {
-                    decision = learner.select(
-                        record.context,
-                        generation,
-                        allocation_engine);
-                }
+                const LocalSearchActionDecision decision = learner.select(
+                    record.context,
+                    generation,
+                    allocation_engine);
                 record.terminal_action = decision.action;
                 record.selection_score = decision.score;
                 record.exploratory_selection =
@@ -889,6 +994,7 @@ void LocalSearchAllocationRunner::finalize_feedback(
     LocalSearchAllocationRun& run,
     LocalSearchPolicy policy,
     OnlineActionLearner& learner) {
+    const LocalSearchRewardWeights& weights = learner.reward_weights();
     for (auto& record : run.records) {
         // The allocation action starts after the common weak probe.
         const double continuation_relative_gain =
@@ -904,14 +1010,14 @@ void LocalSearchAllocationRunner::finalize_feedback(
                 kContinuationGainScale
                     * continuation_relative_gain);
         const double parent_reward =
-            kParentRewardWeight
+            weights[2]
             * std::clamp(record.parent_credit, 0.0, 1.0);
         const double lower_reward =
-            kLowerRewardWeight
+            weights[0]
             * std::clamp(record.lower_credit, 0.0, 1.0);
         const double gamma_reward =
             record.post_probe_gamma_cross
-            ? kGammaRewardWeight
+            ? weights[1]
             : 0.0;
         const double continuation_gain_signal =
             kContinuationGainSignalWeight
@@ -976,6 +1082,36 @@ void LocalSearchAllocationRunner::finalize_feedback(
     }
 }
 
+std::array<std::size_t, 3> LocalSearchAllocationRunner::action_counts(
+    std::size_t eligible,
+    const LocalSearchActionShares& shares) {
+    std::array<std::size_t, 3> counts{};
+    std::array<double, 3> remainders{};
+    std::size_t assigned = 0;
+    for (std::size_t action = 0; action < 3; ++action) {
+        const double exact = static_cast<double>(eligible) * shares[action];
+        counts[action] = static_cast<std::size_t>(std::floor(exact + 1e-9));
+        remainders[action] = exact - static_cast<double>(counts[action]);
+        assigned += counts[action];
+    }
+    while (assigned < eligible) {
+        // Largest remainder first; ties to the weaker action.
+        std::size_t best = 0;
+        for (std::size_t action = 1; action < 3; ++action) {
+            if (remainders[action] > remainders[best] + 1e-12) best = action;
+        }
+        ++counts[best];
+        remainders[best] = -1.0;
+        ++assigned;
+    }
+    while (assigned > eligible) {  // only if the shares exceed 1 by rounding
+        for (std::size_t action = 3; action-- > 0;) {
+            if (counts[action] > 0) { --counts[action]; --assigned; break; }
+        }
+    }
+    return counts;
+}
+
 std::size_t LocalSearchAllocationRunner::action_index(
     LocalSearchAction action) {
     switch (action) {
@@ -999,6 +1135,20 @@ const char* local_search_policy_name(LocalSearchPolicy policy) {
             return "matched_random";
         case LocalSearchPolicy::OnlineIndividual:
             return "online";
+        case LocalSearchPolicy::Rank:
+            return "rank";
+    }
+    return "unknown";
+}
+
+const char* local_search_context_mode_name(LocalSearchContextMode mode) {
+    switch (mode) {
+        case LocalSearchContextMode::Full:
+            return "full";
+        case LocalSearchContextMode::NoProbe:
+            return "no_probe";
+        case LocalSearchContextMode::None:
+            return "none";
     }
     return "unknown";
 }

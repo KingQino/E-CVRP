@@ -75,6 +75,8 @@ public:
     LocalSearchAction static_action;            // action of the static policy
     bool static_unrestricted;                   // static policy uses unrestricted RVND instead
     bool swap_star;                             // SWAP* is an RVND neighbourhood (false: ablation)
+    LocalSearchAllocationOptions allocation_options; // matched_random/rank shares of this instance, SWAP* setting
+    double freeze_learning_at{1.0};             // online: stop model updates from this budget fraction on
     LocalSearchDepthProfile ls_depth_profile;
     LocalSearchDepthConfig ls_depth_config;
     double action_cost_weight;
@@ -146,6 +148,7 @@ private:
 
     [[nodiscard]] bool within_budget() const;
     [[nodiscard]] bool elite_unrestricted_enabled() const;
+    static LocalSearchActionShares read_action_shares(const std::string& path, const std::string& instance_name);
     [[nodiscard]] double calls_to_evals(std::uint64_t distance_calls) const;
     [[nodiscard]] std::filesystem::path log_directory() const;
     void initialize_population();

@@ -231,6 +231,7 @@ TEST_F(MaTest, AllAllocationPoliciesRun) {
         {LocalSearchPolicy::RandomMixed, LocalSearchAction::Strong, false},
         {LocalSearchPolicy::MatchedRandom, LocalSearchAction::Strong, false},
         {LocalSearchPolicy::OnlineIndividual, LocalSearchAction::Strong, false},
+        {LocalSearchPolicy::Rank, LocalSearchAction::Strong, false},
     };
     for (const auto& [policy, static_action, static_unrestricted] : configurations) {
         Case fresh_instance((fs::path(__FILE__).parent_path().parent_path() / "data").string(), "E-n29-k4-s7.evrp");
@@ -311,4 +312,173 @@ TEST_F(MaTest, SwapStarOptionReachesTheOnlineRun) {
         }
     }
     fs::remove_all(stats);
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Ablation settings
+
+TEST(MaAblationTest, ActionCountsUseLargestRemainders) {
+    using Counts = std::array<std::size_t, 3>;
+    EXPECT_EQ(LocalSearchAllocationRunner::action_counts(10, {0.5, 0.4, 0.1}), (Counts{5, 4, 1}));
+    EXPECT_EQ(LocalSearchAllocationRunner::action_counts(7, {0.3, 0.4, 0.3}), (Counts{2, 3, 2}));
+    EXPECT_EQ(LocalSearchAllocationRunner::action_counts(0, {0.3, 0.4, 0.3}), (Counts{0, 0, 0}));
+    EXPECT_EQ(LocalSearchAllocationRunner::action_counts(3, {0.0, 0.0, 1.0}), (Counts{0, 0, 3}));
+    for (std::size_t eligible = 0; eligible < 120; ++eligible) {
+        const Counts counts = LocalSearchAllocationRunner::action_counts(eligible, {0.7563, 0.0348, 0.2089});
+        EXPECT_EQ(counts[0] + counts[1] + counts[2], eligible);
+    }
+}
+
+TEST(MaAblationTest, ContextModesMaskTheModelInput) {
+    LocalSearchAllocationContext context;
+    context.quality_gap = 0.3;
+    context.budget_progress = 0.5;
+    context.probe_success_rate = 0.4;
+    context.probe_relative_gain = 0.01;
+    context.probe_efficiency = 0.6;
+    context.probe_cost = 0.2;
+    OnlineActionLearner learner;
+    learner.set_context_mode(LocalSearchContextMode::NoProbe);
+    const auto no_probe = learner.model_context(context);
+    EXPECT_DOUBLE_EQ(no_probe.quality_gap, 0.3);
+    EXPECT_DOUBLE_EQ(no_probe.budget_progress, 0.5);
+    EXPECT_DOUBLE_EQ(no_probe.probe_success_rate, 0.0);
+    EXPECT_DOUBLE_EQ(no_probe.probe_relative_gain, 0.0);
+    EXPECT_DOUBLE_EQ(no_probe.probe_efficiency, 0.0);
+    EXPECT_DOUBLE_EQ(no_probe.probe_cost, 0.0);
+
+    // Context-free: every context gives the same score, which still learns from the rewards.
+    learner.set_context_mode(LocalSearchContextMode::None);
+    LocalSearchAllocationContext other = context;
+    other.quality_gap = 2.0;
+    other.probe_efficiency = 0.0;
+    learner.update(context, LocalSearchAction::Strong, 1.0, 5.0);
+    learner.update(other, LocalSearchAction::Strong, 1.0, 5.0);
+    EXPECT_DOUBLE_EQ(learner.score(context, LocalSearchAction::Strong), learner.score(other, LocalSearchAction::Strong));
+    EXPECT_GT(learner.score(context, LocalSearchAction::Strong), learner.score(context, LocalSearchAction::Medium));
+}
+
+TEST(MaAblationTest, FrozenLearnerDoesNotUpdate) {
+    LocalSearchAllocationContext context;
+    context.quality_gap = 0.2;
+    OnlineActionLearner learner;
+    learner.update(context, LocalSearchAction::Medium, 0.5, 3.0);
+    const double before = learner.score(context, LocalSearchAction::Medium);
+    learner.set_frozen(true);
+    learner.update(context, LocalSearchAction::Medium, 1.0, 50.0);
+    EXPECT_DOUBLE_EQ(learner.score(context, LocalSearchAction::Medium), before);
+    EXPECT_EQ(learner.observation_count(LocalSearchAction::Medium), 1);
+    learner.set_frozen(false);
+    learner.update(context, LocalSearchAction::Medium, 1.0, 50.0);
+    EXPECT_EQ(learner.observation_count(LocalSearchAction::Medium), 2);
+}
+
+TEST(MaAblationTest, RewardUsesTheGivenWeights) {
+    OnlineActionLearner learner;
+    learner.set_reward_weights({0.0, 0.5, 0.4});
+    LocalSearchAllocationRun run;
+    AllocatedLocalSearchRecord record;
+    record.lower_credit = 1.0;
+    record.parent_credit = 1.0;
+    record.post_probe_gamma_cross = true;
+    run.records.push_back(record);
+    LocalSearchAllocationRunner::finalize_feedback(run, LocalSearchPolicy::MatchedRandom, learner);
+    EXPECT_DOUBLE_EQ(run.records[0].reward, 0.9);
+    EXPECT_THROW(learner.set_reward_weights({0.6, 0.3, 0.2}), std::invalid_argument);
+}
+
+namespace {
+
+// Sums the selections and forced local optima per action of local-search-allocation.tsv files under `root`.
+struct AllocationTotals {
+    std::array<long, 3> selections{};
+    std::array<long, 3> forced{};
+};
+
+AllocationTotals read_allocation_totals(const fs::path& root) {
+    AllocationTotals totals;
+    for (const auto& entry : fs::recursive_directory_iterator(root)) {
+        if (entry.path().filename() != "local-search-allocation.tsv") continue;
+        std::ifstream in(entry.path());
+        std::string line;
+        std::getline(in, line);
+        while (std::getline(in, line)) {
+            std::istringstream fields(line);
+            std::string iter, policy, action;
+            long selections = 0, forced = 0;
+            fields >> iter >> policy >> action >> selections >> forced;
+            const std::size_t index = action == "weak" ? 0 : (action == "medium" ? 1 : 2);
+            totals.selections[index] += selections;
+            totals.forced[index] += forced;
+        }
+    }
+    return totals;
+}
+
+}  // namespace
+
+// Rank and matched random give exactly the requested shares to the individuals eligible after the probe.
+TEST_F(MaTest, RankAndMatchedRandomFollowTheShares) {
+    const fs::path stats = fs::temp_directory_path() / "ecvrp_allocation_shares_test";
+    for (const LocalSearchPolicy policy : {LocalSearchPolicy::Rank, LocalSearchPolicy::MatchedRandom}) {
+        for (const LocalSearchActionShares shares : {LocalSearchActionShares{0.0, 0.0, 1.0},
+                                                     LocalSearchActionShares{1.0, 0.0, 0.0},
+                                                     LocalSearchActionShares{0.5, 0.5, 0.0}}) {
+            fs::remove_all(stats);
+            Case fresh_instance((fs::path(__FILE__).parent_path().parent_path() / "data").string(), "E-n29-k4-s7.evrp");
+            Parameters params = make_ma_params();
+            params.ma_pop_size = 50;
+            params.ma_ls_policy = policy;
+            params.ma_action_shares = shares;
+            params.enable_logging = true;
+            params.k_stats_path = stats.string();
+            auto preprocessor = std::make_unique<Preprocessor>(fresh_instance, params);
+            preprocessor->max_evals_ = 5'000.0;
+            Ma search(params.seed, &fresh_instance, preprocessor.get());
+            EXPECT_LT(search.run(), INFEASIBLE);
+            const AllocationTotals totals = read_allocation_totals(stats);
+            const long eligible = totals.selections[0] - totals.forced[0] + totals.selections[1] + totals.selections[2];
+            ASSERT_GT(eligible, 0);
+            EXPECT_EQ(totals.forced[1] + totals.forced[2], 0);
+            if (shares[2] == 1.0) EXPECT_EQ(totals.selections[2], eligible);
+            if (shares[0] == 1.0) EXPECT_EQ(totals.selections[0] - totals.forced[0], eligible);
+            if (shares[1] == 0.5) EXPECT_NEAR(static_cast<double>(totals.selections[1]) / eligible, 0.5, 0.05);
+        }
+    }
+    fs::remove_all(stats);
+}
+
+// Per-instance shares are read from a file and normalised; a missing instance is an error.
+TEST_F(MaTest, ActionSharesFileIsReadPerInstance) {
+    const fs::path file = fs::temp_directory_path() / "ecvrp_shares_test.tsv";
+    {
+        std::ofstream out(file);
+        out << "instance\tweak\tmedium\tstrong\n";
+        out << "E-n22-k4\t0.1\t0.1\t0.8\n";
+        out << "E-n29-k4-s7\t2\t1\t1\n";
+    }
+    Parameters params = make_ma_params();
+    params.ma_ls_policy = LocalSearchPolicy::Rank;
+    params.ma_action_shares_file = file.string();
+    auto preprocessor = make_preprocessor(params, 1'000.0);
+    const Ma search(params.seed, instance.get(), preprocessor.get());
+    EXPECT_DOUBLE_EQ(search.allocation_options.action_shares[0], 0.5);
+    EXPECT_DOUBLE_EQ(search.allocation_options.action_shares[1], 0.25);
+    EXPECT_DOUBLE_EQ(search.allocation_options.action_shares[2], 0.25);
+    {
+        std::ofstream out(file);
+        out << "E-n22-k4\t0.1\t0.1\t0.8\n";
+    }
+    EXPECT_THROW(Ma(params.seed, instance.get(), preprocessor.get()), std::invalid_argument);
+    fs::remove(file);
+}
+
+// Default ablation settings reproduce the reference run; the reference arms change the result.
+TEST_F(MaTest, AblationDefaultsAreTheReference) {
+    const Parameters defaults;
+    EXPECT_EQ(defaults.ma_context, LocalSearchContextMode::Full);
+    EXPECT_DOUBLE_EQ(defaults.ma_freeze_learning_at, 1.0);
+    EXPECT_DOUBLE_EQ(defaults.ma_reward_weights[0], 0.45);
+    EXPECT_DOUBLE_EQ(defaults.ma_reward_weights[1], 0.25);
+    EXPECT_DOUBLE_EQ(defaults.ma_reward_weights[2], 0.20);
 }

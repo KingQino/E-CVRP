@@ -174,6 +174,8 @@ MA-STATIC-STRONG	ma	-low_margin 1.05 -ma_ls_policy static -ma_static_action stro
 
 Each id gets its own directory and Slurm array, so variants of the same algorithm do not overwrite each other.
 
+**BA-BMA ablation study.** See [Ablation](ablation.md) for the arms, the two-stage runs and the commands.
+
 **SWAP\* ablation.** `scripts/ablation/swap-star.tsv` runs the online MA with and without SWAP\* (`-ma_swap_star 1|0`), with Elite Unrestricted switched off (`-ma_unrestricted_credit_rho 0.0`). Without SWAP\*, every RVND session (weak, strong and unrestricted) draws from the other seven neighbourhoods; everything else, including seeds and the budget, is unchanged, and `-ma_swap_star 1` reproduces the default run exactly. In a new experiment directory:
 
 ```shell

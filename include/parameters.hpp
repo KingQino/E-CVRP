@@ -47,6 +47,11 @@ struct Parameters {
     bool ma_swap_star;                  // MA: SWAP* is one of the RVND neighbourhoods (false: ablation without SWAP*)
     LocalSearchDepthProfile ma_ls_depth;// MA: coupled weak/medium/strong depth profile
     double ma_action_cost_weight;       // MA: weight of the predicted-cost term in the online learner's action score
+    LocalSearchActionShares ma_action_shares;  // MA matched_random/rank: weak/medium/strong shares among eligible individuals
+    std::string ma_action_shares_file;  // MA matched_random/rank: TSV of per-instance shares (overrides ma_action_shares)
+    LocalSearchRewardWeights ma_reward_weights; // MA online: weights of the L, G and P reward terms
+    LocalSearchContextMode ma_context;  // MA online: context of the reward and cost models
+    double ma_freeze_learning_at;       // MA online: stop updating the models once this fraction of the budget is used (1 = never)
 
     // TwoStageAlns parameters
     double alns_start_deviation;        // TwoStageAlns: initial record-deviation acceptance gap
@@ -92,6 +97,11 @@ struct Parameters {
         ma_swap_star = true;
         ma_ls_depth = LocalSearchDepthProfile::D5;
         ma_action_cost_weight = 0.02;
+        ma_action_shares = {1.0 - 0.0348226126187 - 0.2088046423357, 0.0348226126187, 0.2088046423357};
+        ma_action_shares_file = "";
+        ma_reward_weights = {0.45, 0.25, 0.20};
+        ma_context = LocalSearchContextMode::Full;
+        ma_freeze_learning_at = 1.0;
 
         alns_start_deviation = 0.0167;
         alns_decay = 0.99;

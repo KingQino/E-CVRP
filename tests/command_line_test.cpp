@@ -172,6 +172,11 @@ TEST(CommandLineTest, ParseMaParameters) {
         "-ma_ls_depth", "d3",
         "-ma_action_cost_weight", "0.05",
         "-ma_swap_star", "0",
+        "-ma_action_shares", "0.5,0.4,0.1",
+        "-ma_action_shares_file", "shares.tsv",
+        "-ma_reward_weights", "0,0.5,0.4",
+        "-ma_context", "no_probe",
+        "-ma_freeze_learning_at", "0.25",
         "-low_margin", "1.1",
     };
     constexpr int argc = std::size(argv);
@@ -195,6 +200,12 @@ TEST(CommandLineTest, ParseMaParameters) {
     EXPECT_EQ(params.ma_ls_depth, LocalSearchDepthProfile::D3);
     EXPECT_DOUBLE_EQ(params.ma_action_cost_weight, 0.05);
     EXPECT_FALSE(params.ma_swap_star);
+    EXPECT_DOUBLE_EQ(params.ma_action_shares[0], 0.5);
+    EXPECT_DOUBLE_EQ(params.ma_action_shares[2], 0.1);
+    EXPECT_EQ(params.ma_action_shares_file, "shares.tsv");
+    EXPECT_DOUBLE_EQ(params.ma_reward_weights[1], 0.5);
+    EXPECT_EQ(params.ma_context, LocalSearchContextMode::NoProbe);
+    EXPECT_DOUBLE_EQ(params.ma_freeze_learning_at, 0.25);
     EXPECT_DOUBLE_EQ(params.low_opt_trigger_margin, 1.1);
 }
 

@@ -84,7 +84,7 @@ Options:
   -ma_mutation_prob [double]           : MA probability that an offspring is mutated (default: 0.5)
   -ma_mutation_ind_prob [double]       : MA per-gene mutation probability (default: 0.2)
   -ma_tournament_size [int]            : MA upper-parent tournament size (default: 2)
-  -ma_ls_policy [enum]                 : MA local-search action allocation: static|random|matched_random|online (default: online)
+  -ma_ls_policy [enum]                 : MA local-search action allocation: static|random|matched_random|online|rank (default: online)
   -ma_static_action [enum]             : MA action of the static policy: weak|medium|strong (default: strong)
   -ma_static_unrestricted [0|1]        : MA static policy runs unrestricted RVND to a local optimum (default: 0)
   -ma_parent_pool_ratio [double]       : MA parent-pool size / population size (default: 0.10)
@@ -94,6 +94,12 @@ Options:
   -ma_ls_depth [d1..d6]                : MA local-search depth profile (default: d5)
   -ma_action_cost_weight [double]      : MA weight of the cost term in the online action score (default: 0.02)
   -ma_swap_star [0|1]                  : MA uses SWAP* as an RVND neighbourhood in every local search (default: 1)
+  -ma_ls_policy rank                   : MA rule-based allocation: ma_action_shares by probe efficiency
+  -ma_action_shares [w,m,s]            : MA matched_random/rank shares among probe-eligible individuals
+  -ma_action_shares_file [path]        : MA per-instance shares (TSV: instance, weak, medium, strong)
+  -ma_reward_weights [L,G,P]           : MA online reward weights: lower archive, gamma, parent (default: 0.45,0.25,0.20)
+  -ma_context [full|no_probe|none]     : MA online learner context (default: full; none = context-free)
+  -ma_freeze_learning_at [double]      : MA online: stop model updates after this budget fraction (default: 1 = never)
   -alns_start_dev [double]             : TwoStageAlns initial record-deviation gap (default: 0.0167)
   -alns_decay [double]                 : TwoStageAlns adaptive-weight decay (default: 0.99)
   -alns_score_acc [double]             : TwoStageAlns score for accepted solutions (default: 2.0)

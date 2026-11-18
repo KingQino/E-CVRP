@@ -1,0 +1,19 @@
+id	algorithm	arguments
+BA-BMA	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02
+FIXED-WEAK	ma	-low_margin 1.05 -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_ls_policy static -ma_static_action weak
+FIXED-MEDIUM	ma	-low_margin 1.05 -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_ls_policy static -ma_static_action medium
+FIXED-STRONG	ma	-low_margin 1.05 -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_ls_policy static -ma_static_action strong
+FIXED-UNRESTRICTED	ma	-low_margin 1.05 -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_ls_policy static -ma_static_unrestricted 1
+RAA-1	ma	-low_margin 1.05 -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_ls_policy rank -ma_action_shares 0.5,0.4,0.1
+RAA-2	ma	-low_margin 1.05 -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_ls_policy rank -ma_action_shares 0.4,0.4,0.2
+RAA-3	ma	-low_margin 1.05 -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_ls_policy rank -ma_action_shares 0.3,0.4,0.3
+FREEZE-25	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_freeze_learning_at 0.25
+FREEZE-50	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_freeze_learning_at 0.50
+FREEZE-75	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_freeze_learning_at 0.75
+NO-PROBE-FEATURES	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_context no_probe
+CONTEXT-FREE	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_context none
+NO-L	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_reward_weights 0,0.5,0.4
+NO-G	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_reward_weights 0.623077,0,0.276923
+NO-P	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_reward_weights 0.578571,0.321429,0
+REWARD-ONLY	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0
+NO-SWAPSTAR	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_swap_star 0

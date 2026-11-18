@@ -10,6 +10,9 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cmath>
+#include <sstream>
+#include <iomanip>
+#include <array>
 
 namespace fs = std::filesystem;
 
@@ -41,7 +44,39 @@ LocalSearchPolicy parse_ma_ls_policy(const std::string& value) {
     if (v == "random") return LocalSearchPolicy::RandomMixed;
     if (v == "matched_random") return LocalSearchPolicy::MatchedRandom;
     if (v == "online") return LocalSearchPolicy::OnlineIndividual;
-    throw std::invalid_argument("ma_ls_policy must be one of: static, random, matched_random, online");
+    if (v == "rank") return LocalSearchPolicy::Rank;
+    throw std::invalid_argument("ma_ls_policy must be one of: static, random, matched_random, online, rank");
+}
+
+LocalSearchContextMode parse_ma_context(const std::string& value) {
+    const std::string v = CommandLine::to_lowercase(value);
+    if (v == "full") return LocalSearchContextMode::Full;
+    if (v == "no_probe") return LocalSearchContextMode::NoProbe;
+    if (v == "none") return LocalSearchContextMode::None;
+    throw std::invalid_argument("ma_context must be one of: full, no_probe, none");
+}
+
+// "a,b,c" -> {a, b, c}
+std::array<double, 3> parse_triple(const std::string& value, const std::string& name) {
+    std::array<double, 3> result{};
+    std::stringstream stream(value);
+    std::string item;
+    std::size_t count = 0;
+    while (std::getline(stream, item, ',')) {
+        if (count == 3) throw std::invalid_argument(name + " must have three comma-separated values");
+        std::size_t used = 0;
+        result[count] = std::stod(item, &used);
+        if (used != item.size()) throw std::invalid_argument(name + " must have three comma-separated numbers");
+        ++count;
+    }
+    if (count != 3) throw std::invalid_argument(name + " must have three comma-separated values");
+    return result;
+}
+
+std::string format_triple(const std::array<double, 3>& value) {
+    std::ostringstream out;
+    out << std::setprecision(17) << value[0] << ',' << value[1] << ',' << value[2];
+    return out.str();
 }
 
 LocalSearchDepthProfile parse_ma_ls_depth(const std::string& value) {
@@ -87,6 +122,26 @@ void validate_ma_parameters(const Parameters& params) {
     }
     if (!std::isfinite(params.ma_action_cost_weight) || params.ma_action_cost_weight < 0.0) {
         throw std::invalid_argument("ma_action_cost_weight must be finite and non-negative");
+    }
+    double share_sum = 0.0;
+    for (const double share : params.ma_action_shares) {
+        require_probability(share, "ma_action_shares entries");
+        share_sum += share;
+    }
+    if (std::fabs(share_sum - 1.0) > 1e-6) {
+        throw std::invalid_argument("ma_action_shares must sum to 1");
+    }
+    double weight_sum = 0.0;
+    for (const double weight : params.ma_reward_weights) {
+        require_probability(weight, "ma_reward_weights entries");
+        weight_sum += weight;
+    }
+    if (weight_sum > 1.0 + 1e-9) {
+        throw std::invalid_argument("ma_reward_weights must sum to at most 1");
+    }
+    if (!std::isfinite(params.ma_freeze_learning_at) || params.ma_freeze_learning_at <= 0.0
+        || params.ma_freeze_learning_at > 1.0) {
+        throw std::invalid_argument("ma_freeze_learning_at must be in (0, 1]");
     }
 }
 
@@ -163,6 +218,11 @@ void CommandLine::parse_parameters(Parameters& params) const {
         params.ma_swap_star = get_bool("ma_swap_star", params.ma_swap_star);
         params.ma_ls_depth = parse_ma_ls_depth(get_string("ma_ls_depth", local_search_depth_profile_name(params.ma_ls_depth)));
         params.ma_action_cost_weight = get_double("ma_action_cost_weight", params.ma_action_cost_weight);
+        params.ma_action_shares = parse_triple(get_string("ma_action_shares", format_triple(params.ma_action_shares)), "ma_action_shares");
+        params.ma_action_shares_file = get_string("ma_action_shares_file", params.ma_action_shares_file);
+        params.ma_reward_weights = parse_triple(get_string("ma_reward_weights", format_triple(params.ma_reward_weights)), "ma_reward_weights");
+        params.ma_context = parse_ma_context(get_string("ma_context", local_search_context_mode_name(params.ma_context)));
+        params.ma_freeze_learning_at = get_double("ma_freeze_learning_at", params.ma_freeze_learning_at);
         // TwoStageAlns; the basin_* names are accepted as legacy aliases.
         params.alns_start_deviation = get_double_alias("alns_start_dev", "basin_start_dev", params.alns_start_deviation);
         params.alns_decay = get_double_alias("alns_decay", "basin_decay", params.alns_decay);
@@ -210,7 +270,7 @@ void CommandLine::display_help() {
               << "  -ma_mutation_prob [double]           : MA probability that an offspring is mutated (default: 0.5)\n"
               << "  -ma_mutation_ind_prob [double]       : MA per-gene mutation probability (default: 0.2)\n"
               << "  -ma_tournament_size [int]            : MA upper-parent tournament size (default: 2)\n"
-              << "  -ma_ls_policy [enum]                 : MA local-search action allocation: static|random|matched_random|online (default: online)\n"
+              << "  -ma_ls_policy [enum]                 : MA local-search action allocation: static|random|matched_random|online|rank (default: online)\n"
               << "  -ma_static_action [enum]             : MA action of the static policy: weak|medium|strong (default: strong)\n"
               << "  -ma_static_unrestricted [0|1]        : MA static policy runs unrestricted RVND to a local optimum (default: 0)\n"
               << "  -ma_parent_pool_ratio [double]       : MA parent-pool size / population size (default: 0.10)\n"
@@ -220,6 +280,12 @@ void CommandLine::display_help() {
               << "  -ma_swap_star [0|1]                  : MA uses SWAP* as an RVND neighbourhood in every local search (default: 1)\n"
               << "  -ma_ls_depth [d1..d6]                : MA local-search depth profile (default: d5)\n"
               << "  -ma_action_cost_weight [double]      : MA weight of the cost term in the online action score (default: 0.02)\n"
+              << "  -ma_ls_policy rank                   : MA rule-based allocation: ma_action_shares by probe efficiency\n"
+              << "  -ma_action_shares [w,m,s]            : MA matched_random/rank shares among probe-eligible individuals\n"
+              << "  -ma_action_shares_file [path]        : MA per-instance shares (TSV: instance, weak, medium, strong)\n"
+              << "  -ma_reward_weights [L,G,P]           : MA online reward weights: lower archive, gamma, parent (default: 0.45,0.25,0.20)\n"
+              << "  -ma_context [full|no_probe|none]     : MA online learner context (default: full; none = context-free)\n"
+              << "  -ma_freeze_learning_at [double]      : MA online: stop model updates after this budget fraction (default: 1 = never)\n"
               << "  -alns_start_dev [double]             : TwoStageAlns initial record-deviation gap (default: 0.0167)\n"
               << "  -alns_decay [double]                 : TwoStageAlns adaptive-weight decay (default: 0.99)\n"
               << "  -alns_score_acc [double]             : TwoStageAlns score for accepted solutions (default: 2.0)\n"

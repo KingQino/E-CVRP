@@ -89,6 +89,15 @@ public:
     void reset();
     void set_action_cost_weight(double action_cost_weight);
     [[nodiscard]] double action_cost_weight() const;
+    // Ablation settings: reward weights (L, G, P), context mode, and freezing of the model updates.
+    void set_reward_weights(const LocalSearchRewardWeights& weights);
+    [[nodiscard]] const LocalSearchRewardWeights& reward_weights() const;
+    void set_context_mode(LocalSearchContextMode mode);
+    [[nodiscard]] LocalSearchContextMode context_mode() const;
+    void set_frozen(bool frozen);
+    [[nodiscard]] bool frozen() const;
+    // The context as the models see it under the current context mode.
+    [[nodiscard]] LocalSearchAllocationContext model_context(const LocalSearchAllocationContext& context) const;
 
     [[nodiscard]] LocalSearchActionDecision select(
         const LocalSearchAllocationContext& context,
@@ -120,6 +129,16 @@ private:
     std::array<int, 3> observation_counts{};
     std::vector<LowerArchiveEntry> lower_archive;
     double action_cost_weight_value{DEFAULT_ACTION_COST_WEIGHT};
+    LocalSearchRewardWeights reward_weight_values{0.45, 0.25, 0.20};
+    LocalSearchContextMode context_mode_value{LocalSearchContextMode::Full};
+    bool frozen_value{false};
+};
+
+// Settings of the allocation runner beyond the policy.
+struct LocalSearchAllocationOptions {
+    bool swap_star_enabled{true};
+    // matched_random and rank: weak/medium/strong shares among the individuals still eligible after the probe.
+    LocalSearchActionShares action_shares{1.0 - 0.0348226126187 - 0.2088046423357, 0.0348226126187, 0.2088046423357};
 };
 
 struct LocalSearchAllocationStats {
@@ -202,7 +221,12 @@ public:
         std::vector<LocalSearchWorkspace>& workspaces,
         const OnlineActionLearner& learner,
         const LocalSearchDepthConfig& depth_config = {},
-        bool swap_star_enabled = true);
+        const LocalSearchAllocationOptions& options = {});
+
+    // Action counts for `eligible` individuals: largest-remainder rounding of eligible x shares.
+    static std::array<std::size_t, 3> action_counts(
+        std::size_t eligible,
+        const LocalSearchActionShares& shares);
 
     static void assign_parent_use_feedback(
         LocalSearchAllocationRun& run,

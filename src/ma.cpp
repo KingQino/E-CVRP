@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <limits>
 #include <stdexcept>
@@ -118,6 +120,15 @@ Ma::Ma(const int seed, Case* instance, Preprocessor* preprocessor)
     allocation_engine.seed(allocation_seed);
 
     action_learner.set_action_cost_weight(action_cost_weight);
+    action_learner.set_reward_weights(params.ma_reward_weights);
+    action_learner.set_context_mode(params.ma_context);
+    freeze_learning_at = params.ma_freeze_learning_at;
+    allocation_options.swap_star_enabled = swap_star;
+    allocation_options.action_shares = params.ma_action_shares;
+    if (!params.ma_action_shares_file.empty()
+        && (ls_policy == LocalSearchPolicy::MatchedRandom || ls_policy == LocalSearchPolicy::Rank)) {
+        allocation_options.action_shares = read_action_shares(params.ma_action_shares_file, instance->instance_name_);
+    }
     elite_unrestricted_controller.set_credit_rho(unrestricted_credit_rho);
 
     generation = 0;
@@ -165,6 +176,28 @@ double Ma::run() {
 
 bool Ma::within_budget() const {
     return stop_criteria == 0 ? !stop_criteria_max_evals() : !stop_criteria_max_exec_time(duration);
+}
+
+LocalSearchActionShares Ma::read_action_shares(const std::string& path, const std::string& instance_name) {
+    std::ifstream in(path);
+    if (!in) {
+        throw std::invalid_argument("cannot open ma_action_shares_file: " + path);
+    }
+    std::string line;
+    while (std::getline(in, line)) {
+        if (line.empty() || line[0] == '#') continue;
+        std::istringstream fields(line);
+        std::string name;
+        LocalSearchActionShares shares{};
+        if (!(fields >> name >> shares[0] >> shares[1] >> shares[2]) || name != instance_name) continue;
+        const double sum = shares[0] + shares[1] + shares[2];
+        if (sum <= 0.0 || shares[0] < 0.0 || shares[1] < 0.0 || shares[2] < 0.0) {
+            throw std::invalid_argument("invalid shares for " + instance_name + " in " + path);
+        }
+        for (double& share : shares) share /= sum;
+        return shares;
+    }
+    throw std::invalid_argument("no shares for " + instance_name + " in " + path);
 }
 
 bool Ma::elite_unrestricted_enabled() const {
@@ -258,6 +291,7 @@ void Ma::run_generation() {
             : 0.0;
     };
     const double budget_progress = budget_fraction(generation_start_distance_calls);
+    action_learner.set_frozen(budget_progress >= freeze_learning_at);
     const double upper_stagnation = budget_fraction(generation_start_distance_calls - last_upper_improvement_distance_calls);
     const double lower_stagnation = budget_fraction(generation_start_distance_calls - last_lower_improvement_distance_calls);
     double population_dispersion = 0.0;
@@ -290,7 +324,7 @@ void Ma::run_generation() {
             population, unchanged_lower_elite, *instance, generation, ls_policy,
             frozen_upper_reference, frozen_trigger_upper_bound, budget_progress, upper_stagnation,
             lower_stagnation, population_dispersion, recent_gamma_entry_rate, evaluation_limit_distance_calls,
-            local_search_engine, allocation_engine, allocation_workspaces, action_learner, ls_depth_config, swap_star);
+            local_search_engine, allocation_engine, allocation_workspaces, action_learner, ls_depth_config, allocation_options);
         generation_operator_stats = allocation_run.operator_stats;
         normal_ls_distance_calls = allocation_distance_calls(allocation_run);
         if (elite_unrestricted_enabled()) {
@@ -590,7 +624,9 @@ void Ma::open_log_for_local_search() {
     std::ofstream log_configuration(directory / "run-configuration.tsv");
     log_configuration << "seed\tgamma\tls_policy\tstatic_action\tstatic_unrestricted\tunrestricted_credit_rho\tls_depth\t"
                          "weak_move_fraction\tmedium_move_fraction\tstrong_move_fraction\t"
-                         "strong_weak_call_multiplier\taction_cost_weight\tswap_star\n";
+                         "strong_weak_call_multiplier\taction_cost_weight\tswap_star\t"
+                         "weak_share\tmedium_share\tstrong_share\treward_weight_L\treward_weight_G\treward_weight_P\t"
+                         "context\tfreeze_learning_at\n";
     log_configuration << std::setprecision(12)
                       << seed << "\t"
                       << gamma << "\t"
@@ -604,7 +640,15 @@ void Ma::open_log_for_local_search() {
                       << ls_depth_config.strong_move_fraction << "\t"
                       << ls_depth_config.strong_weak_call_multiplier << "\t"
                       << action_cost_weight << "\t"
-                      << swap_star << "\n";
+                      << swap_star << "\t"
+                      << allocation_options.action_shares[0] << "\t"
+                      << allocation_options.action_shares[1] << "\t"
+                      << allocation_options.action_shares[2] << "\t"
+                      << action_learner.reward_weights()[0] << "\t"
+                      << action_learner.reward_weights()[1] << "\t"
+                      << action_learner.reward_weights()[2] << "\t"
+                      << local_search_context_mode_name(action_learner.context_mode()) << "\t"
+                      << freeze_learning_at << "\n";
 }
 
 void Ma::flush_local_search_log() {
