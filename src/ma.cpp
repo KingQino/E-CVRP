@@ -123,6 +123,7 @@ Ma::Ma(const int seed, Case* instance, Preprocessor* preprocessor)
     action_learner.set_reward_weights(params.ma_reward_weights);
     action_learner.set_context_mode(params.ma_context);
     freeze_learning_at = params.ma_freeze_learning_at;
+    summary_log = params.ma_summary_log;
     allocation_options.swap_star_enabled = swap_star;
     allocation_options.action_shares = params.ma_action_shares;
     if (!params.ma_action_shares_file.empty()
@@ -156,18 +157,23 @@ double Ma::run() {
     start = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration<double>::zero();
 
-    if (enable_logging) {
+    if (detailed_logging()) {
         open_log_for_evolution();
         open_log_for_local_search();
+    } else if (enable_logging) {
+        write_run_configuration();
     }
 
     initialize_heuristic();
     run_heuristic();
     run_final_follower();
 
-    if (enable_logging) {
+    if (detailed_logging()) {
         close_log_for_evolution();
         close_log_for_local_search();
+    }
+    if (enable_logging) {
+        write_run_summary();
         save_log_for_solution();
     }
 
@@ -238,6 +244,7 @@ void Ma::initialize_heuristic() {
     pending_elite_generations = 0;
     pending_budget_stats = {};
     pending_budget_generations = 0;
+    run_totals = {};
     generation = 0;
     retained_lower_elite.reset();
     population.clear();
@@ -266,7 +273,7 @@ void Ma::run_heuristic() {
     while (within_budget()) {
         run_generation();
         duration = std::chrono::high_resolution_clock::now() - start;
-        if (enable_logging) {
+        if (detailed_logging()) {
             flush_row_into_evol_log();
         }
     }
@@ -291,7 +298,16 @@ void Ma::run_generation() {
             : 0.0;
     };
     const double budget_progress = budget_fraction(generation_start_distance_calls);
-    action_learner.set_frozen(budget_progress >= freeze_learning_at);
+    const bool frozen_now = budget_progress >= freeze_learning_at;
+    if (frozen_now && !action_learner.frozen() && ls_policy == LocalSearchPolicy::OnlineIndividual) {
+        run_totals.freeze_generation = generation;
+        run_totals.freeze_budget_fraction = budget_progress;
+        for (std::size_t action = 0; action < 3; ++action) {
+            run_totals.updates_at_freeze[action] = action_learner.observation_count(
+                static_cast<LocalSearchAction>(action));
+        }
+    }
+    action_learner.set_frozen(frozen_now);
     const double upper_stagnation = budget_fraction(generation_start_distance_calls - last_upper_improvement_distance_calls);
     const double lower_stagnation = budget_fraction(generation_start_distance_calls - last_lower_improvement_distance_calls);
     double population_dispersion = 0.0;
@@ -434,9 +450,17 @@ void Ma::run_generation() {
         recent_gamma_entry_rate = allocation_run.records.empty()
             ? 0.0
             : static_cast<double>(gamma_entries) / static_cast<double>(allocation_run.records.size());
+        const std::size_t phase = action_learner.frozen() ? 1 : 0;
+        for (std::size_t action = 0; action < 3; ++action) {
+            run_totals.selections[phase][action] += allocation_run.stats[action].selections;
+            run_totals.forced[phase][action] += allocation_run.stats[action].forced_local_optima;
+            run_totals.distance_calls[phase][action] += allocation_run.stats[action].distance_calls;
+        }
     }
+    run_totals.normal_ls_distance_calls += normal_ls_distance_calls;
+    run_totals.follower_distance_calls += follower_distance_calls;
 
-    if (enable_logging) {
+    if (detailed_logging()) {
         for (std::size_t i = 0; i < LOCAL_SEARCH_OPERATOR_COUNT; ++i) {
             const auto& stats = generation_operator_stats[i];
             oss_operator_rows << std::setprecision(12)
@@ -512,7 +536,7 @@ void Ma::run_generation() {
     population.clear();
     population.swap(population_buffer);
 
-    if (enable_logging) {
+    if (detailed_logging()) {
         const std::uint64_t generation_distance_calls = instance->get_distance_calls() - generation_start_distance_calls;
         const std::uint64_t categorized = normal_ls_distance_calls + elite_ls_distance_calls + follower_distance_calls;
         SearchBudgetStats budget_stats;
@@ -621,6 +645,12 @@ void Ma::open_log_for_local_search() {
                   "other_evals\ttotal_evals\tnormal_ls_share\telite_ls_share\t"
                   "follower_share\tother_share\tfollower_candidates\tfollower_runs\n";
 
+    write_run_configuration();
+}
+
+void Ma::write_run_configuration() const {
+    const fs::path directory = log_directory();
+    create_directories_if_not_exists(directory);
     std::ofstream log_configuration(directory / "run-configuration.tsv");
     log_configuration << "seed\tgamma\tls_policy\tstatic_action\tstatic_unrestricted\tunrestricted_credit_rho\tls_depth\t"
                          "weak_move_fraction\tmedium_move_fraction\tstrong_move_fraction\t"
@@ -649,6 +679,41 @@ void Ma::open_log_for_local_search() {
                       << action_learner.reward_weights()[2] << "\t"
                       << local_search_context_mode_name(action_learner.context_mode()) << "\t"
                       << freeze_learning_at << "\n";
+}
+
+void Ma::write_run_summary() const {
+    const fs::path directory = log_directory();
+    create_directories_if_not_exists(directory);
+    std::ofstream out(directory / "run-summary.tsv");
+    const std::array<const char*, 3> names = {"weak", "medium", "strong"};
+    out << "seed\tgenerations\tfinal_cost\ttotal_evals\tnormal_ls_evals\tfollower_evals\tfreeze_learning_at\t"
+           "freeze_generation\tfreeze_budget_fraction";
+    for (const char* name : names) out << "\tupdates_" << name;
+    for (const char* phase : {"pre", "post"}) {
+        for (const char* name : names) {
+            out << "\t" << name << "_selections_" << phase << "\t" << name << "_forced_" << phase
+                << "\t" << name << "_evals_" << phase;
+        }
+    }
+    out << "\n";
+    // Model updates: counted until the freeze (they stop afterwards), i.e. the final counts.
+    std::array<int, 3> updates{};
+    for (std::size_t action = 0; action < 3; ++action) {
+        updates[action] = action_learner.observation_count(static_cast<LocalSearchAction>(action));
+    }
+    out << std::setprecision(12)
+        << seed << "\t" << generation << "\t" << verified_best->lower_cost << "\t"
+        << instance->get_evals() << "\t" << calls_to_evals(run_totals.normal_ls_distance_calls) << "\t"
+        << calls_to_evals(run_totals.follower_distance_calls) << "\t" << freeze_learning_at << "\t"
+        << run_totals.freeze_generation << "\t" << run_totals.freeze_budget_fraction;
+    for (const int count : updates) out << "\t" << count;
+    for (std::size_t phase = 0; phase < 2; ++phase) {
+        for (std::size_t action = 0; action < 3; ++action) {
+            out << "\t" << run_totals.selections[phase][action] << "\t" << run_totals.forced[phase][action]
+                << "\t" << calls_to_evals(run_totals.distance_calls[phase][action]);
+        }
+    }
+    out << "\n";
 }
 
 void Ma::flush_local_search_log() {

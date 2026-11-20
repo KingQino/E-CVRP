@@ -12,7 +12,8 @@ Reference (revised BA-BMA): `-low_margin 1.05 -ma_ls_policy online -ma_unrestric
 | `-ma_action_shares_file path` | | TSV `instance weak medium strong` with one row per instance; overrides `-ma_action_shares` |
 | `-ma_reward_weights L,G,P` | `0.45,0.25,0.20` | Weights of the lower-archive, gamma-crossing and parent-use reward terms |
 | `-ma_context full\|no_probe\|none` | `full` | `no_probe`: probe success rate, probe improvement, probe efficiency and probe cost are 0 for the models (the probe still runs). `none`: context-free, the models see only the constant term |
-| `-ma_freeze_learning_at f` | `1` | Stop updating the reward and cost models (and their observation counts) from the first generation that starts with at least a fraction `f` of the budget used. Action selection, its 5% random exploration and the UCB bonus continue on the frozen models |
+| `-ma_freeze_learning_at f` | `1` | Stop updating the reward and cost models (and their observation counts) from the first generation that starts with at least a fraction `f` of the budget used; `0` never updates them. Action selection, its 5% random exploration and the UCB bonus continue on the frozen models |
+| `-ma_log full\|summary` | `full` | With `-log 1`: `summary` writes only the solution, `run-configuration.tsv` and `run-summary.tsv` (one row per run); `full` also writes the per-generation logs. Both write `run-summary.tsv` |
 | `-ma_action_cost_weight 0` | `0.02` | Reward-only action score (no cost penalty) |
 | `-ma_swap_star 0` | `1` | No SWAP\* in any local search |
 
@@ -65,3 +66,25 @@ export ECVRP_EXPERIMENTS=$PWD/all.tsv
 ```
 
 Keep the `export` line of the current stage in every new shell. `matched-shares.tsv` must stay where it is, since the stage-2 runs read it.
+
+## Freeze study
+
+How long must BA-BMA update its online models to reach the solution quality of the full algorithm? The reward and cost models are frozen after 0%, 1%, ..., 24% of the evaluation budget (0% = no learning; the freeze takes effect at the start of the first generation past the point). The experiment list [`scripts/ablation/freeze-study.tsv`](../scripts/ablation/freeze-study.tsv) has BA-BMA and these 25 settings, all with `-ma_log summary`. A freeze point is comparable to BA-BMA if the 95% bootstrap interval of its penalty (mean relative difference over the instances) lies within ±0.05%; the answer is the smallest freeze point from which all later points are comparable.
+
+`run-summary.tsv` of each run has the generations, final cost, budget split, the generation and budget fraction at which the freeze took effect, the model updates per action, and the selections, forced local optima and distance calls per action before and after the freeze.
+
+In a new, empty experiment directory:
+
+```shell
+git clone -b freeze-study git@github.com:KingQino/E-CVRP.git source
+export ECVRP_EXPERIMENTS=$PWD/source/scripts/ablation/freeze-study.tsv
+./source/scripts/hpc/setup-all.sh
+./source/scripts/hpc/submit-all.sh
+./source/scripts/hpc/check-progress.sh          # --resubmit for missing instances
+
+# once all runs have finished
+./source/scripts/hpc/summarize-results.sh
+python3 source/scripts/ablation/collect_run_summaries.py . $ECVRP_EXPERIMENTS freeze-runs.csv
+```
+
+Download `freeze-runs.csv` and `results/` only (a few MB).

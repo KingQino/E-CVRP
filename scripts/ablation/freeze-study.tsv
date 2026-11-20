@@ -1,0 +1,27 @@
+id	algorithm	arguments
+BA-BMA	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary
+FREEZE-00	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.00
+FREEZE-01	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.01
+FREEZE-02	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.02
+FREEZE-03	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.03
+FREEZE-04	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.04
+FREEZE-05	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.05
+FREEZE-06	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.06
+FREEZE-07	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.07
+FREEZE-08	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.08
+FREEZE-09	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.09
+FREEZE-10	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.10
+FREEZE-11	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.11
+FREEZE-12	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.12
+FREEZE-13	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.13
+FREEZE-14	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.14
+FREEZE-15	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.15
+FREEZE-16	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.16
+FREEZE-17	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.17
+FREEZE-18	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.18
+FREEZE-19	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.19
+FREEZE-20	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.20
+FREEZE-21	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.21
+FREEZE-22	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.22
+FREEZE-23	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.23
+FREEZE-24	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_freeze_learning_at 0.24

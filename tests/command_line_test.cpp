@@ -177,6 +177,7 @@ TEST(CommandLineTest, ParseMaParameters) {
         "-ma_reward_weights", "0,0.5,0.4",
         "-ma_context", "no_probe",
         "-ma_freeze_learning_at", "0.25",
+        "-ma_log", "summary",
         "-low_margin", "1.1",
     };
     constexpr int argc = std::size(argv);
@@ -206,6 +207,7 @@ TEST(CommandLineTest, ParseMaParameters) {
     EXPECT_DOUBLE_EQ(params.ma_reward_weights[1], 0.5);
     EXPECT_EQ(params.ma_context, LocalSearchContextMode::NoProbe);
     EXPECT_DOUBLE_EQ(params.ma_freeze_learning_at, 0.25);
+    EXPECT_TRUE(params.ma_summary_log);
     EXPECT_DOUBLE_EQ(params.low_opt_trigger_margin, 1.1);
 }
 

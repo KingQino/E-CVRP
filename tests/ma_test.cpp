@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <map>
 #include <memory>
 #include <numeric>
 #include <random>
@@ -481,4 +482,105 @@ TEST_F(MaTest, AblationDefaultsAreTheReference) {
     EXPECT_DOUBLE_EQ(defaults.ma_reward_weights[0], 0.45);
     EXPECT_DOUBLE_EQ(defaults.ma_reward_weights[1], 0.25);
     EXPECT_DOUBLE_EQ(defaults.ma_reward_weights[2], 0.20);
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Freeze study: freeze at 0 and summary logging
+
+namespace {
+
+std::map<std::string, std::string> read_single_row_tsv(const fs::path& path) {
+    std::ifstream in(path);
+    std::string header, row;
+    std::getline(in, header);
+    std::getline(in, row);
+    std::map<std::string, std::string> values;
+    std::istringstream names(header), fields(row);
+    std::string name, field;
+    while (std::getline(names, name, '\t') && std::getline(fields, field, '\t')) values[name] = field;
+    return values;
+}
+
+struct LoggedRun {
+    double cost;
+    fs::path directory;
+};
+
+LoggedRun run_logged(const fs::path& stats, double freeze_at, bool summary) {
+    Case fresh_instance((fs::path(__FILE__).parent_path().parent_path() / "data").string(), "E-n29-k4-s7.evrp");
+    Parameters params = make_ma_params();
+    params.ma_pop_size = 50;
+    params.ma_ls_policy = LocalSearchPolicy::OnlineIndividual;
+    params.ma_unrestricted_credit_rho = 0.0;
+    params.ma_freeze_learning_at = freeze_at;
+    params.ma_summary_log = summary;
+    params.enable_logging = true;
+    params.k_stats_path = stats.string();
+    auto preprocessor = std::make_unique<Preprocessor>(fresh_instance, params);
+    preprocessor->max_evals_ = 20'000.0;
+    Ma search(params.seed, &fresh_instance, preprocessor.get());
+    const double cost = search.run();
+    return {cost, stats / "MA" / "E-n29-k4-s7" / std::to_string(params.seed)};
+}
+
+}  // namespace
+
+TEST(MaFreezeStudyTest, FreezeAtZeroNeverUpdatesTheModels) {
+    const fs::path stats = fs::temp_directory_path() / "ecvrp_freeze_zero_test";
+    fs::remove_all(stats);
+    const LoggedRun run = run_logged(stats, 0.0, true);
+    EXPECT_LT(run.cost, INFEASIBLE);
+    auto summary = read_single_row_tsv(run.directory / "run-summary.tsv");
+    EXPECT_EQ(summary["freeze_generation"], "1");
+    EXPECT_EQ(summary["updates_weak"], "0");
+    EXPECT_EQ(summary["updates_medium"], "0");
+    EXPECT_EQ(summary["updates_strong"], "0");
+    EXPECT_EQ(summary["weak_selections_pre"], "0");
+    EXPECT_GT(std::stol(summary["weak_selections_post"]) + std::stol(summary["strong_selections_post"]), 0);
+    fs::remove_all(stats);
+}
+
+// Summary logging gives the same run as full logging, writes three files, and its totals match the full logs.
+TEST(MaFreezeStudyTest, SummaryLogMatchesFullLog) {
+    const fs::path full_stats = fs::temp_directory_path() / "ecvrp_freeze_full_test";
+    const fs::path summary_stats = fs::temp_directory_path() / "ecvrp_freeze_summary_test";
+    fs::remove_all(full_stats);
+    fs::remove_all(summary_stats);
+    const LoggedRun full = run_logged(full_stats, 0.3, false);
+    const LoggedRun summary = run_logged(summary_stats, 0.3, true);
+    EXPECT_DOUBLE_EQ(full.cost, summary.cost);
+
+    std::vector<std::string> files;
+    for (const auto& entry : fs::directory_iterator(summary.directory)) files.push_back(entry.path().filename().string());
+    std::sort(files.begin(), files.end());
+    EXPECT_EQ(files, (std::vector<std::string>{"run-configuration.tsv", "run-summary.tsv", "solution.E-n29-k4-s7.txt"}));
+
+    auto a = read_single_row_tsv(full.directory / "run-summary.tsv");
+    auto b = read_single_row_tsv(summary.directory / "run-summary.tsv");
+    EXPECT_EQ(a, b);
+
+    // Freeze took effect after the first generation, and the post-freeze phase has selections.
+    EXPECT_GT(std::stoi(b["freeze_generation"]), 1);
+    EXPECT_GE(std::stod(b["freeze_budget_fraction"]), 0.3);
+    EXPECT_GT(std::stol(b["weak_selections_post"]) + std::stol(b["strong_selections_post"]), 0);
+
+    // Selections in run-summary.tsv equal the sums of the full allocation log.
+    std::array<long, 3> logged{};
+    std::ifstream in(full.directory / "local-search-allocation.tsv");
+    std::string line;
+    std::getline(in, line);
+    while (std::getline(in, line)) {
+        std::istringstream fields(line);
+        std::string iter, policy, action;
+        long selections = 0;
+        fields >> iter >> policy >> action >> selections;
+        logged[action == "weak" ? 0 : (action == "medium" ? 1 : 2)] += selections;
+    }
+    const std::array<const char*, 3> names = {"weak", "medium", "strong"};
+    for (std::size_t i = 0; i < 3; ++i) {
+        const std::string name = names[i];
+        EXPECT_EQ(std::stol(b[name + "_selections_pre"]) + std::stol(b[name + "_selections_post"]), logged[i]) << name;
+    }
+    fs::remove_all(full_stats);
+    fs::remove_all(summary_stats);
 }

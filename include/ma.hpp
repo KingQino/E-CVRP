@@ -77,6 +77,19 @@ public:
     bool swap_star;                             // SWAP* is an RVND neighbourhood (false: ablation)
     LocalSearchAllocationOptions allocation_options; // matched_random/rank shares of this instance, SWAP* setting
     double freeze_learning_at{1.0};             // online: stop model updates from this budget fraction on
+    bool summary_log{false};                    // -ma_log summary: only solution, run-configuration.tsv, run-summary.tsv
+
+    // Whole-run totals for run-summary.tsv (kept in every logging mode).
+    struct RunTotals {
+        int freeze_generation{};                          // first generation without model updates (0: never frozen)
+        double freeze_budget_fraction{};                  // budget fraction at the start of that generation
+        std::array<int, 3> updates_at_freeze{};           // model updates per action before the freeze
+        std::array<std::array<long, 3>, 2> selections{};  // [before/after freeze][weak, medium, strong]
+        std::array<std::array<long, 3>, 2> forced{};      // weak selections forced by a local optimum in the probe
+        std::array<std::array<std::uint64_t, 3>, 2> distance_calls{}; // local-search distance calls per action
+        std::uint64_t normal_ls_distance_calls{};
+        std::uint64_t follower_distance_calls{};
+    } run_totals;
     LocalSearchDepthProfile ls_depth_profile;
     LocalSearchDepthConfig ls_depth_config;
     double action_cost_weight;
@@ -160,6 +173,9 @@ private:
     void open_log_for_local_search();
     void close_log_for_local_search();
     void flush_local_search_log();
+    void write_run_configuration() const;
+    void write_run_summary() const;
+    [[nodiscard]] bool detailed_logging() const { return enable_logging && !summary_log; }
     void write_allocation_snapshot();
     void write_elite_snapshot();
     void write_budget_snapshot();

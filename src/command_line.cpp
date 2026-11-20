@@ -139,9 +139,9 @@ void validate_ma_parameters(const Parameters& params) {
     if (weight_sum > 1.0 + 1e-9) {
         throw std::invalid_argument("ma_reward_weights must sum to at most 1");
     }
-    if (!std::isfinite(params.ma_freeze_learning_at) || params.ma_freeze_learning_at <= 0.0
+    if (!std::isfinite(params.ma_freeze_learning_at) || params.ma_freeze_learning_at < 0.0
         || params.ma_freeze_learning_at > 1.0) {
-        throw std::invalid_argument("ma_freeze_learning_at must be in (0, 1]");
+        throw std::invalid_argument("ma_freeze_learning_at must be in [0, 1]");
     }
 }
 
@@ -223,6 +223,13 @@ void CommandLine::parse_parameters(Parameters& params) const {
         params.ma_reward_weights = parse_triple(get_string("ma_reward_weights", format_triple(params.ma_reward_weights)), "ma_reward_weights");
         params.ma_context = parse_ma_context(get_string("ma_context", local_search_context_mode_name(params.ma_context)));
         params.ma_freeze_learning_at = get_double("ma_freeze_learning_at", params.ma_freeze_learning_at);
+        {
+            const std::string log_mode = CommandLine::to_lowercase(get_string("ma_log", params.ma_summary_log ? "summary" : "full"));
+            if (log_mode != "full" && log_mode != "summary") {
+                throw std::invalid_argument("ma_log must be one of: full, summary");
+            }
+            params.ma_summary_log = log_mode == "summary";
+        }
         // TwoStageAlns; the basin_* names are accepted as legacy aliases.
         params.alns_start_deviation = get_double_alias("alns_start_dev", "basin_start_dev", params.alns_start_deviation);
         params.alns_decay = get_double_alias("alns_decay", "basin_decay", params.alns_decay);
@@ -285,7 +292,8 @@ void CommandLine::display_help() {
               << "  -ma_action_shares_file [path]        : MA per-instance shares (TSV: instance, weak, medium, strong)\n"
               << "  -ma_reward_weights [L,G,P]           : MA online reward weights: lower archive, gamma, parent (default: 0.45,0.25,0.20)\n"
               << "  -ma_context [full|no_probe|none]     : MA online learner context (default: full; none = context-free)\n"
-              << "  -ma_freeze_learning_at [double]      : MA online: stop model updates after this budget fraction (default: 1 = never)\n"
+              << "  -ma_freeze_learning_at [double]      : MA online: stop model updates after this budget fraction (0 = never update; default: 1 = never freeze)\n"
+              << "  -ma_log [full|summary]               : MA with -log 1: full per-generation logs, or only solution + run-summary.tsv (default: full)\n"
               << "  -alns_start_dev [double]             : TwoStageAlns initial record-deviation gap (default: 0.0167)\n"
               << "  -alns_decay [double]                 : TwoStageAlns adaptive-weight decay (default: 0.99)\n"
               << "  -alns_score_acc [double]             : TwoStageAlns score for accepted solutions (default: 2.0)\n"

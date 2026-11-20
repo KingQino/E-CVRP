@@ -51,7 +51,8 @@ struct Parameters {
     std::string ma_action_shares_file;  // MA matched_random/rank: TSV of per-instance shares (overrides ma_action_shares)
     LocalSearchRewardWeights ma_reward_weights; // MA online: weights of the L, G and P reward terms
     LocalSearchContextMode ma_context;  // MA online: context of the reward and cost models
-    double ma_freeze_learning_at;       // MA online: stop updating the models once this fraction of the budget is used (1 = never)
+    double ma_freeze_learning_at;       // MA online: stop updating the models once this fraction of the budget is used (0 = never update, 1 = never freeze)
+    bool ma_summary_log;                // MA with -log 1: write only the solution, run-configuration.tsv and run-summary.tsv
 
     // TwoStageAlns parameters
     double alns_start_deviation;        // TwoStageAlns: initial record-deviation acceptance gap
@@ -102,6 +103,7 @@ struct Parameters {
         ma_reward_weights = {0.45, 0.25, 0.20};
         ma_context = LocalSearchContextMode::Full;
         ma_freeze_learning_at = 1.0;
+        ma_summary_log = false;
 
         alns_start_deviation = 0.0167;
         alns_decay = 0.99;
