@@ -1,0 +1,3 @@
+id	algorithm	arguments
+BA-BMA	ma	-low_margin 1.05 -ma_ls_policy online -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_log summary -ma_profile 1
+BMA	ma	-low_margin 1.05 -ma_unrestricted_credit_rho 0.0 -ma_ls_depth d5 -ma_action_cost_weight 0.02 -ma_ls_policy static -ma_static_unrestricted 1 -ma_log summary -ma_profile 1

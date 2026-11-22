@@ -230,6 +230,7 @@ void CommandLine::parse_parameters(Parameters& params) const {
             }
             params.ma_summary_log = log_mode == "summary";
         }
+        params.ma_profile = get_bool("ma_profile", params.ma_profile);
         // TwoStageAlns; the basin_* names are accepted as legacy aliases.
         params.alns_start_deviation = get_double_alias("alns_start_dev", "basin_start_dev", params.alns_start_deviation);
         params.alns_decay = get_double_alias("alns_decay", "basin_decay", params.alns_decay);
@@ -293,6 +294,7 @@ void CommandLine::display_help() {
               << "  -ma_reward_weights [L,G,P]           : MA online reward weights: lower archive, gamma, parent (default: 0.45,0.25,0.20)\n"
               << "  -ma_context [full|no_probe|none]     : MA online learner context (default: full; none = context-free)\n"
               << "  -ma_freeze_learning_at [double]      : MA online: stop model updates after this budget fraction (0 = never update; default: 1 = never freeze)\n"
+              << "  -ma_profile [0|1]                    : MA: write profile.tsv (wall time and distance calls per algorithm part)\n"
               << "  -ma_log [full|summary]               : MA with -log 1: full per-generation logs, or only solution + run-summary.tsv (default: full)\n"
               << "  -alns_start_dev [double]             : TwoStageAlns initial record-deviation gap (default: 0.0167)\n"
               << "  -alns_decay [double]                 : TwoStageAlns adaptive-weight decay (default: 0.99)\n"

@@ -3,6 +3,7 @@
 //
 
 #include "ma.hpp"
+#include "ma_profile.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -124,6 +125,7 @@ Ma::Ma(const int seed, Case* instance, Preprocessor* preprocessor)
     action_learner.set_context_mode(params.ma_context);
     freeze_learning_at = params.ma_freeze_learning_at;
     summary_log = params.ma_summary_log;
+    profile = params.ma_profile;
     allocation_options.swap_star_enabled = swap_star;
     allocation_options.action_shares = params.ma_action_shares;
     if (!params.ma_action_shares_file.empty()
@@ -156,25 +158,42 @@ Ma::~Ma() {
 double Ma::run() {
     start = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration<double>::zero();
+    if (profile) ma_profile::profiler().start(instance);
 
-    if (detailed_logging()) {
-        open_log_for_evolution();
-        open_log_for_local_search();
-    } else if (enable_logging) {
-        write_run_configuration();
+    {
+        ma_profile::Scope scope(ma_profile::Part::Logging);
+        if (detailed_logging()) {
+            open_log_for_evolution();
+            open_log_for_local_search();
+        } else if (enable_logging) {
+            write_run_configuration();
+        }
     }
 
-    initialize_heuristic();
+    {
+        ma_profile::Scope scope(ma_profile::Part::Init);
+        initialize_heuristic();
+    }
     run_heuristic();
-    run_final_follower();
-
-    if (detailed_logging()) {
-        close_log_for_evolution();
-        close_log_for_local_search();
+    {
+        ma_profile::Scope scope(ma_profile::Part::FinalRefine);
+        run_final_follower();
     }
-    if (enable_logging) {
-        write_run_summary();
-        save_log_for_solution();
+
+    {
+        ma_profile::Scope scope(ma_profile::Part::Logging);
+        if (detailed_logging()) {
+            close_log_for_evolution();
+            close_log_for_local_search();
+        }
+        if (enable_logging) {
+            write_run_summary();
+            save_log_for_solution();
+        }
+    }
+    if (profile) {
+        ma_profile::profiler().stop();
+        if (enable_logging) write_profile();
     }
 
     return verified_best->lower_cost;
@@ -274,6 +293,7 @@ void Ma::run_heuristic() {
         run_generation();
         duration = std::chrono::high_resolution_clock::now() - start;
         if (detailed_logging()) {
+            ma_profile::Scope scope(ma_profile::Part::Logging);
             flush_row_into_evol_log();
         }
     }
@@ -289,7 +309,9 @@ void Ma::run_generation() {
     std::array<LocalSearchOperatorStats, LOCAL_SEARCH_OPERATOR_COUNT> generation_operator_stats{};
 
     // The upper reference is frozen for the whole generation.
+    ma_profile::begin(ma_profile::Part::Context);
     const ParentCandidate frozen_upper_reference = MaReproduction::make_parent_candidate(*upper_best);
+    ma_profile::end();
     const double frozen_trigger_upper_bound = frozen_upper_reference.upper_cost * gamma;
     const std::uint64_t generation_start_distance_calls = instance->get_distance_calls();
     const auto budget_fraction = [&](const std::uint64_t calls) {
@@ -312,6 +334,7 @@ void Ma::run_generation() {
     const double lower_stagnation = budget_fraction(generation_start_distance_calls - last_lower_improvement_distance_calls);
     double population_dispersion = 0.0;
     if (ls_policy == LocalSearchPolicy::OnlineIndividual && !population.empty()) {
+        ma_profile::Scope scope(ma_profile::Part::Context);
         for (const auto& individual : population) {
             population_dispersion += MaReproduction::adjacency_distance(
                 MaReproduction::make_parent_candidate(*individual), frozen_upper_reference);
@@ -327,6 +350,7 @@ void Ma::run_generation() {
                 && individual->lower_cost < INFEASIBLE;
             if (can_reuse_lower_elite) continue;
 
+            ma_profile::Scope scope(ma_profile::Part::LsStatic);
             const LocalSearchResult result = static_unrestricted
                 ? MaLeader::improve_unrestricted(*individual, *instance, local_search_engine,
                                                  local_search_workspace, frozen_trigger_upper_bound)
@@ -356,6 +380,7 @@ void Ma::run_generation() {
     }
 
     // === 2. Parent pool (built before the follower so reproduction is independent of triggering) ===
+    ma_profile::begin(ma_profile::Part::ParentPool);
     std::vector<std::shared_ptr<Individual>> ranked_upper_solutions = population;
     std::sort(ranked_upper_solutions.begin(), ranked_upper_solutions.end(),
               [](const std::shared_ptr<Individual>& lhs, const std::shared_ptr<Individual>& rhs) {
@@ -372,6 +397,7 @@ void Ma::run_generation() {
         global_best_upper_cost = upper_best->upper_cost;
         last_upper_improvement_distance_calls = instance->get_distance_calls();
     }
+    ma_profile::end();
 
     // === 3. Follower on the gamma-filtered candidates ===
     const double trigger_upper_bound = global_best_upper_cost * gamma;
@@ -386,6 +412,7 @@ void Ma::run_generation() {
         const bool can_reuse_lower_elite = individual == unchanged_lower_elite && individual->lower_cost < INFEASIBLE;
         if (!can_reuse_lower_elite) {
             ++follower_runs;
+            ma_profile::Scope scope(ma_profile::Part::Follower);
             follower->run(individual.get());
         }
         evaluated_complete_solutions.push_back(individual);
@@ -410,6 +437,7 @@ void Ma::run_generation() {
 
     // === 4. Lower-archive feedback for the online learner ===
     if (ls_policy == LocalSearchPolicy::OnlineIndividual) {
+        ma_profile::Scope scope(ma_profile::Part::Feedback);
         std::vector<std::shared_ptr<Individual>> ordinary_complete_solutions;
         const std::vector<std::shared_ptr<Individual>>* ordinary_source = &evaluated_complete_solutions;
         if (elite_run.triggered) {
@@ -434,15 +462,23 @@ void Ma::run_generation() {
     const int offspring_target = pop_size - (has_lower_elite ? 1 : 0);
     const bool has_verified_best = verified_best->lower_cost < INFEASIBLE;
     std::vector<int> parent_use_counts;
+    ma_profile::begin(ma_profile::Part::Reproduction);
     const std::vector<std::vector<int>> chromosomes = MaReproduction::create_offspring(
         parent_pool, verified_best.get(), has_verified_best, preprocessor->customer_ids_, offspring_target,
         tournament_size, mutation_prob, mutation_ind_prob, verified_upper_ratio, pure_immigrant_ratio,
         random_engine, uniform_real_dist, reproduction_workspace, &parent_use_counts);
+    ma_profile::end();
 
     if (ls_policy != LocalSearchPolicy::Static) {
-        LocalSearchAllocationRunner::assign_parent_use_feedback(allocation_run, parent_pool, parent_use_counts);
-        EliteUnrestrictedController::assign_parent_use_feedback(elite_run, parent_pool, parent_use_counts);
-        LocalSearchAllocationRunner::finalize_feedback(allocation_run, ls_policy, action_learner);
+        {
+            ma_profile::Scope scope(ma_profile::Part::Feedback);
+            LocalSearchAllocationRunner::assign_parent_use_feedback(allocation_run, parent_pool, parent_use_counts);
+            EliteUnrestrictedController::assign_parent_use_feedback(elite_run, parent_pool, parent_use_counts);
+        }
+        {
+            ma_profile::Scope scope(ma_profile::Part::LearnerUpdate);
+            LocalSearchAllocationRunner::finalize_feedback(allocation_run, ls_policy, action_learner);
+        }
         const auto gamma_entries = std::count_if(allocation_run.records.begin(), allocation_run.records.end(),
                                                  [](const AllocatedLocalSearchRecord& record) {
                                                      return record.crossed_gamma;
@@ -461,6 +497,7 @@ void Ma::run_generation() {
     run_totals.follower_distance_calls += follower_distance_calls;
 
     if (detailed_logging()) {
+        ma_profile::Scope scope(ma_profile::Part::Logging);
         for (std::size_t i = 0; i < LOCAL_SEARCH_OPERATOR_COUNT; ++i) {
             const auto& stats = generation_operator_stats[i];
             oss_operator_rows << std::setprecision(12)
@@ -488,6 +525,7 @@ void Ma::run_generation() {
     }
 
     // === 6. Next population: elite slot (x_g^E, or x* as fallback) + offspring (Individual objects are reused) ===
+    ma_profile::begin(ma_profile::Part::Population);
     evaluated_complete_solutions.clear();
     ranked_upper_solutions.clear();
     allocation_run.records.clear();
@@ -535,8 +573,10 @@ void Ma::run_generation() {
     retained_lower_elite = lower_elite;
     population.clear();
     population.swap(population_buffer);
+    ma_profile::end();
 
     if (detailed_logging()) {
+        ma_profile::Scope scope(ma_profile::Part::Logging);
         const std::uint64_t generation_distance_calls = instance->get_distance_calls() - generation_start_distance_calls;
         const std::uint64_t categorized = normal_ls_distance_calls + elite_ls_distance_calls + follower_distance_calls;
         SearchBudgetStats budget_stats;
@@ -554,6 +594,7 @@ void Ma::run_generation() {
 }
 
 void Ma::load_offspring(Individual& offspring, const std::vector<int>& chromosome) {
+    ma_profile::Scope scope(ma_profile::Part::Split);
     initializer->prins_split(chromosome, split_routes);  // routes include the depot at both ends
     check_capacity(split_routes);
     offspring.load_routes(split_routes, instance->compute_total_distance(split_routes),
@@ -679,6 +720,26 @@ void Ma::write_run_configuration() const {
                       << action_learner.reward_weights()[2] << "\t"
                       << local_search_context_mode_name(action_learner.context_mode()) << "\t"
                       << freeze_learning_at << "\n";
+}
+
+void Ma::write_profile() const {
+    const fs::path directory = log_directory();
+    create_directories_if_not_exists(directory);
+    std::ofstream out(directory / "profile.tsv");
+    const ma_profile::Totals& totals = ma_profile::profiler().totals();
+    out << "part\tbudget_counted\tseconds\tdistance_calls\tevals\tentries\n" << std::setprecision(12);
+    double seconds = 0.0;
+    std::uint64_t distance_calls = 0;
+    for (std::size_t i = 0; i < ma_profile::kPartCount; ++i) {
+        const auto part = static_cast<ma_profile::Part>(i);
+        out << ma_profile::part_name(part) << "\t" << (ma_profile::budget_part(part) ? 1 : 0) << "\t"
+            << totals.seconds[i] << "\t" << totals.distance_calls[i] << "\t" << calls_to_evals(totals.distance_calls[i])
+            << "\t" << totals.entries[i] << "\n";
+        seconds += totals.seconds[i];
+        distance_calls += totals.distance_calls[i];
+    }
+    out << "total\t-\t" << seconds << "\t" << distance_calls << "\t" << calls_to_evals(distance_calls) << "\t"
+        << generation << "\n";
 }
 
 void Ma::write_run_summary() const {

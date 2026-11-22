@@ -178,6 +178,7 @@ TEST(CommandLineTest, ParseMaParameters) {
         "-ma_context", "no_probe",
         "-ma_freeze_learning_at", "0.25",
         "-ma_log", "summary",
+        "-ma_profile", "1",
         "-low_margin", "1.1",
     };
     constexpr int argc = std::size(argv);
@@ -208,6 +209,7 @@ TEST(CommandLineTest, ParseMaParameters) {
     EXPECT_EQ(params.ma_context, LocalSearchContextMode::NoProbe);
     EXPECT_DOUBLE_EQ(params.ma_freeze_learning_at, 0.25);
     EXPECT_TRUE(params.ma_summary_log);
+    EXPECT_TRUE(params.ma_profile);
     EXPECT_DOUBLE_EQ(params.low_opt_trigger_margin, 1.1);
 }
 

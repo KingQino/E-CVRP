@@ -62,6 +62,8 @@ set(DEPENDENCIES
         include/ma_local_search_allocation.hpp
         src/ma_local_search_allocation.cpp
         include/ma_unrestricted.hpp
+        include/ma_profile.hpp
+        src/ma_profile.cpp
         src/ma_unrestricted.cpp
         include/two_stage_alns.hpp
         src/two_stage_alns.cpp

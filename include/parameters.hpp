@@ -52,6 +52,7 @@ struct Parameters {
     LocalSearchRewardWeights ma_reward_weights; // MA online: weights of the L, G and P reward terms
     LocalSearchContextMode ma_context;  // MA online: context of the reward and cost models
     double ma_freeze_learning_at;       // MA online: stop updating the models once this fraction of the budget is used (0 = never update, 1 = never freeze)
+    bool ma_profile;                    // MA: write profile.tsv with wall time and distance calls per part
     bool ma_summary_log;                // MA with -log 1: write only the solution, run-configuration.tsv and run-summary.tsv
 
     // TwoStageAlns parameters
@@ -104,6 +105,7 @@ struct Parameters {
         ma_context = LocalSearchContextMode::Full;
         ma_freeze_learning_at = 1.0;
         ma_summary_log = false;
+        ma_profile = false;
 
         alns_start_deviation = 0.0167;
         alns_decay = 0.99;

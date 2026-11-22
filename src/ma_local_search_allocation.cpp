@@ -3,6 +3,7 @@
 //
 
 #include "ma_local_search_allocation.hpp"
+#include "ma_profile.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -620,6 +621,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
             record.cost_before_weak = record.individual->upper_cost;
             record.strong_move_limit = MaLeader::move_limit_for_action(
                 *record.individual, instance, LocalSearchAction::Strong, depth_config);
+            ma_profile::begin(ma_profile::Part::LsProbe);
             MaLeader::begin_eight_neighborhood_rvnd_one_move_session(
                 *record.individual, record.session, workspaces[index]);
             const int weak_limit = MaLeader::move_limit_for_action(
@@ -627,15 +629,18 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
             record.weak_result = MaLeader::continue_eight_neighborhood_rvnd_one_move_session(
                 *record.individual, instance, local_search_engine, record.session, weak_limit,
                 workspaces[index], trigger_upper_bound);
+            ma_profile::end();
             record.cost_after_weak = record.individual->upper_cost;
             record.strong_distance_call_limit = MaLeader::strong_distance_call_limit(
                 record.weak_result.distance_calls_used, depth_config);
             record.cost_after_terminal = record.cost_after_weak;
             record.total_result = record.weak_result;
+            ma_profile::begin(ma_profile::Part::Context);
             record.context = make_context(
                 *record.individual, upper_reference, trigger_upper_bound, budget_progress, upper_stagnation,
                 lower_stagnation, population_dispersion, recent_gamma_rate, record.weak_result,
                 evaluation_limit_distance_calls, population.size());
+            ma_profile::end();
             if (record.weak_result.reached_local_optimum) {
                 record.terminal_action = LocalSearchAction::Weak;
                 record.forced_local_optimum = true;
@@ -680,10 +685,12 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
                     ? record.strong_move_limit
                     : MaLeader::move_limit_for_action(
                         *record.individual, instance, LocalSearchAction::Medium, depth_config);
+                ma_profile::begin(ma_profile::Part::LsContinuation);
                 record.continuation_result = MaLeader::continue_eight_neighborhood_rvnd_one_move_session(
                     *record.individual, instance, local_search_engine, record.session, move_limit,
                     workspaces[index], trigger_upper_bound,
                     use_strong ? record.strong_distance_call_limit : std::numeric_limits<std::uint64_t>::max());
+                ma_profile::end();
                 record.total_result = combine_results(
                     record.weak_result, record.continuation_result, record.cost_before_weak,
                     record.individual->upper_cost);
@@ -716,6 +723,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
                     instance,
                     LocalSearchAction::Strong,
                     depth_config);
+            ma_profile::begin(ma_profile::Part::LsProbe);
             MaLeader::begin_eight_neighborhood_rvnd_one_move_session(
                 *record.individual,
                 record.session,
@@ -735,6 +743,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
                     weak_limit,
                     workspaces[local_index],
                     trigger_upper_bound);
+            ma_profile::end();
             record.cost_after_weak =
                 record.individual->upper_cost;
             record.strong_distance_call_limit =
@@ -744,6 +753,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
             record.cost_after_terminal = record.cost_after_weak;
             record.total_result = record.weak_result;
             if (policy == LocalSearchPolicy::OnlineIndividual) {
+                ma_profile::begin(ma_profile::Part::Context);
                 record.context = make_context(
                     *record.individual,
                     upper_reference,
@@ -756,6 +766,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
                     record.weak_result,
                     evaluation_limit_distance_calls,
                     population.size());
+                ma_profile::end();
             }
             run.records.push_back(std::move(record));
         }
@@ -774,10 +785,12 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
                     continue;
                 }
 
+                ma_profile::begin(ma_profile::Part::LearnerSelect);
                 const LocalSearchActionDecision decision = learner.select(
                     record.context,
                     generation,
                     allocation_engine);
+                ma_profile::end();
                 record.terminal_action = decision.action;
                 record.selection_score = decision.score;
                 record.exploratory_selection =
@@ -795,6 +808,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
                             instance,
                             LocalSearchAction::Medium,
                             depth_config);
+                    ma_profile::begin(ma_profile::Part::LsContinuation);
                     record.continuation_result =
                         MaLeader::continue_eight_neighborhood_rvnd_one_move_session(
                             *record.individual,
@@ -808,6 +822,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
                                 ? record.strong_distance_call_limit
                                 : std::numeric_limits<
                                     std::uint64_t>::max());
+                    ma_profile::end();
                     record.total_result = combine_results(
                         record.weak_result,
                         record.continuation_result,
@@ -874,6 +889,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
                     instance,
                     LocalSearchAction::Medium,
                     depth_config);
+            ma_profile::begin(ma_profile::Part::LsContinuation);
             record.continuation_result =
                 MaLeader::continue_eight_neighborhood_rvnd_one_move_session(
                     *record.individual,
@@ -887,6 +903,7 @@ LocalSearchAllocationRun LocalSearchAllocationRunner::run(
                         ? record.strong_distance_call_limit
                         : std::numeric_limits<
                             std::uint64_t>::max());
+            ma_profile::end();
             record.total_result = combine_results(
                 record.weak_result,
                 record.continuation_result,

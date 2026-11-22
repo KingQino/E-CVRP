@@ -77,6 +77,7 @@ public:
     bool swap_star;                             // SWAP* is an RVND neighbourhood (false: ablation)
     LocalSearchAllocationOptions allocation_options; // matched_random/rank shares of this instance, SWAP* setting
     double freeze_learning_at{1.0};             // online: stop model updates from this budget fraction on
+    bool profile{false};                        // -ma_profile 1: write profile.tsv
     bool summary_log{false};                    // -ma_log summary: only solution, run-configuration.tsv, run-summary.tsv
 
     // Whole-run totals for run-summary.tsv (kept in every logging mode).
@@ -175,6 +176,7 @@ private:
     void flush_local_search_log();
     void write_run_configuration() const;
     void write_run_summary() const;
+    void write_profile() const;
     [[nodiscard]] bool detailed_logging() const { return enable_logging && !summary_log; }
     void write_allocation_snapshot();
     void write_elite_snapshot();

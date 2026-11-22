@@ -506,7 +506,7 @@ struct LoggedRun {
     fs::path directory;
 };
 
-LoggedRun run_logged(const fs::path& stats, double freeze_at, bool summary) {
+LoggedRun run_logged(const fs::path& stats, double freeze_at, bool summary, bool profile = false) {
     Case fresh_instance((fs::path(__FILE__).parent_path().parent_path() / "data").string(), "E-n29-k4-s7.evrp");
     Parameters params = make_ma_params();
     params.ma_pop_size = 50;
@@ -514,6 +514,7 @@ LoggedRun run_logged(const fs::path& stats, double freeze_at, bool summary) {
     params.ma_unrestricted_credit_rho = 0.0;
     params.ma_freeze_learning_at = freeze_at;
     params.ma_summary_log = summary;
+    params.ma_profile = profile;
     params.enable_logging = true;
     params.k_stats_path = stats.string();
     auto preprocessor = std::make_unique<Preprocessor>(fresh_instance, params);
@@ -583,4 +584,54 @@ TEST(MaFreezeStudyTest, SummaryLogMatchesFullLog) {
     }
     fs::remove_all(full_stats);
     fs::remove_all(summary_stats);
+}
+
+// The runtime profile only measures: the run is unchanged, and distance reads occur only in budget-counted parts.
+TEST(MaRuntimeProfileTest, ProfileDoesNotChangeTheRunAndAttributesDistanceCalls) {
+    const fs::path plain_stats = fs::temp_directory_path() / "ecvrp_profile_off_test";
+    const fs::path profile_stats = fs::temp_directory_path() / "ecvrp_profile_on_test";
+    fs::remove_all(plain_stats);
+    fs::remove_all(profile_stats);
+    const LoggedRun plain = run_logged(plain_stats, 2.0, true, false);
+    const LoggedRun profiled = run_logged(profile_stats, 2.0, true, true);
+    EXPECT_DOUBLE_EQ(plain.cost, profiled.cost);
+    EXPECT_FALSE(fs::exists(plain.directory / "profile.tsv"));
+    EXPECT_EQ(read_single_row_tsv(plain.directory / "run-summary.tsv"),
+              read_single_row_tsv(profiled.directory / "run-summary.tsv"));
+
+    std::ifstream in(profiled.directory / "profile.tsv");
+    std::string line;
+    std::getline(in, line);
+    EXPECT_EQ(line, "part\tbudget_counted\tseconds\tdistance_calls\tevals\tentries");
+    std::map<std::string, std::pair<std::string, std::uint64_t>> parts;
+    std::uint64_t total_calls = 0;
+    double total_seconds = 0.0, summed_seconds = 0.0;
+    std::uint64_t summed_calls = 0;
+    while (std::getline(in, line)) {
+        std::istringstream fields(line);
+        std::string part, counted;
+        double seconds = 0.0, evals = 0.0;
+        std::uint64_t calls = 0, entries = 0;
+        fields >> part >> counted >> seconds >> calls >> evals >> entries;
+        if (part == "total") {
+            total_calls = calls;
+            total_seconds = seconds;
+            continue;
+        }
+        parts[part] = {counted, calls};
+        summed_calls += calls;
+        summed_seconds += seconds;
+        EXPECT_GE(seconds, 0.0);
+    }
+    EXPECT_EQ(parts.size(), 16u);
+    for (const auto& [part, value] : parts) {
+        if (value.first == "0") EXPECT_EQ(value.second, 0u) << part;
+    }
+    EXPECT_GT(parts["ls_probe"].second, 0u);
+    EXPECT_GT(parts["follower"].second, 0u);
+    EXPECT_GT(parts["split"].second, 0u);
+    EXPECT_EQ(summed_calls, total_calls);
+    EXPECT_NEAR(summed_seconds, total_seconds, 1e-9);
+    fs::remove_all(plain_stats);
+    fs::remove_all(profile_stats);
 }
